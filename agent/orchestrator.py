@@ -75,7 +75,8 @@ def _call_groq(
     cfg = get_config()
     from groq import Groq
     client = Groq(api_key=cfg.groq_api_key)
-    model = cfg.cloud_model
+    # Honor the UI cloud-model dropdown: 8B for planning/critique when enabled.
+    model = cfg.cloud_model_fast if cfg.use_fast_cloud_model else cfg.cloud_model
 
     full_messages = [{"role": "system", "content": system}] + messages
     response = client.chat.completions.create(
