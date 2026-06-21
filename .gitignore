@@ -1,0 +1,64 @@
+# ---------------------------------------------------------------------------
+# Secrets & credentials -- NEVER commit these
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+credentials.json
+client_secret*.json
+google_token.json
+gmail_token.json
+*token*.json
+config.json
+
+# ---------------------------------------------------------------------------
+# Local data / generated state
+# ---------------------------------------------------------------------------
+knowledgemind.db
+*.db
+*.sqlite
+*.sqlite3
+alerts.jsonl
+chroma_db/
+chroma_persist/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+myenv/
+.venv/
+venv/
+env/
+
+# ---------------------------------------------------------------------------
+# Build artifacts (PyInstaller)
+# ---------------------------------------------------------------------------
+build/
+dist/
+*.manifest
+
+# ---------------------------------------------------------------------------
+# Claude Code working folders (per CLAUDE.md)
+# ---------------------------------------------------------------------------
+claude_scripts/
+claude_outputs/
+plans/
+docs/
+!docs/README.md
+
+# ---------------------------------------------------------------------------
+# OS / IDE
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
