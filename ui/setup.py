@@ -179,7 +179,7 @@ def build_setup_ui(on_complete_callback) -> gr.Blocks:
 
             google_creds_path = gr.Textbox(
                 label="Google OAuth Credentials Path",
-                placeholder="/path/to/credentials.json",
+                placeholder="./credentials.json",
                 value=cfg.google_credentials_path,
                 info="Download from Google Cloud Console → APIs & Services → Credentials (OAuth 2.0 Desktop app)",
             )

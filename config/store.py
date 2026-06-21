@@ -58,7 +58,7 @@ class AppConfig:
     groq_api_key: str = ""
     tavily_api_key: str = ""
     slack_bot_token: str = ""
-    google_credentials_path: str = ""
+    google_credentials_path: str = "./credentials.json"
     google_token_path: str = str(CONFIG_DIR / "google_token.json")
 
     # Routing

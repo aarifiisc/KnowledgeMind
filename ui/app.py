@@ -585,7 +585,7 @@ def build_main_ui(cfg: AppConfig) -> gr.Blocks:
                 settings_google   = gr.Textbox(
                     label="Google OAuth credentials path (Calendar + Gmail)",
                     value=cfg.google_credentials_path,
-                    placeholder="/path/to/credentials.json",
+                    placeholder="./credentials.json",
                 )
                 settings_threshold = gr.Textbox(
                     label="Complexity threshold (L2/L3 cloud routing cutoff, 0.0–1.0)",
