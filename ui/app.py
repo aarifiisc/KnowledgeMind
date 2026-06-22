@@ -56,7 +56,7 @@ LEVEL_TRADEOFF_HTML = """
     </tr>
   </thead>
   <tbody>
-    <tr style="background:#EBF3FB">
+    <tr style="background:rgba(128,128,128,0.15)">
       <td style="padding:5px 8px">Autonomy</td>
       <td style="padding:5px 8px; text-align:center">🟢 Low</td>
       <td style="padding:5px 8px; text-align:center">🟡 Medium</td>
@@ -68,7 +68,7 @@ LEVEL_TRADEOFF_HTML = """
       <td style="padding:5px 8px; text-align:center">🟡 Medium</td>
       <td style="padding:5px 8px; text-align:center">🔴 Low</td>
     </tr>
-    <tr style="background:#EBF3FB">
+    <tr style="background:rgba(128,128,128,0.15)">
       <td style="padding:5px 8px">Token Cost</td>
       <td style="padding:5px 8px; text-align:center">🟢 Low</td>
       <td style="padding:5px 8px; text-align:center">🟡 Medium</td>
@@ -80,7 +80,7 @@ LEVEL_TRADEOFF_HTML = """
       <td style="padding:5px 8px; text-align:center">🟡 Medium</td>
       <td style="padding:5px 8px; text-align:center">🟢 High</td>
     </tr>
-    <tr style="background:#EBF3FB">
+    <tr style="background:rgba(128,128,128,0.15)">
       <td style="padding:5px 8px">Control Flow</td>
       <td style="padding:5px 8px; text-align:center" colspan="2">Engineer-defined</td>
       <td style="padding:5px 8px; text-align:center">LLM-directed</td>
@@ -91,7 +91,7 @@ LEVEL_TRADEOFF_HTML = """
       <td style="padding:5px 8px; text-align:center">None</td>
       <td style="padding:5px 8px; text-align:center">Up to 3×</td>
     </tr>
-    <tr style="background:#EBF3FB">
+    <tr style="background:rgba(128,128,128,0.15)">
       <td style="padding:5px 8px">Typical tokens</td>
       <td style="padding:5px 8px; text-align:center">~650</td>
       <td style="padding:5px 8px; text-align:center">~1,800</td>
@@ -112,17 +112,19 @@ Note: token counts are highly use-case dependent. L3 agents can replan up to 3 t
 def _render_routing_log(routing_log: list[dict]) -> str:
     if not routing_log:
         return ""
-    lines = ["**Routing Decisions:**\n"]
+    # Rich markdown with green/yellow badges. NO pipe '|' (gradio can parse it
+    # as a table) and NO &nbsp; entities -- both of those hid the block before.
+    lines = ["**Routing decisions**", ""]
     for log in routing_log:
         decision = log["decision"].upper()
-        badge    = "🟢 LOCAL" if decision == "LOCAL" else "🟡 CLOUD"
+        badge = "🟢 LOCAL" if decision == "LOCAL" else "🟡 CLOUD"
         escalated = " ↑escalated" if log.get("escalated") else ""
         lines.append(
-            f"Step {log['step_id']} &nbsp;|&nbsp; `{log['tool']}` → **{badge}{escalated}**  "
-            f"*(privacy={log['privacy_score']:.2f}, complexity={log['complexity_score']:.2f})*\n"
-            f"&nbsp;&nbsp;&nbsp;&nbsp;_{log['reason']}_"
+            f"- **Step {log['step_id']}** — `{log['tool']}` → **{badge}**{escalated} "
+            f"*(privacy {log['privacy_score']:.2f}, complexity {log['complexity_score']:.2f})*"
         )
-    return "\n\n".join(lines)
+        lines.append(f"  - {log['reason']}")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -212,8 +214,11 @@ def bot_turn(
 def upload_document(file) -> str:
     if file is None:
         return "No file selected."
+    # gradio 6 gr.File passes a string filepath; older versions pass an object
+    # with .name. Handle both so the upload does not crash in the browser.
+    path = file if isinstance(file, str) else getattr(file, "name", str(file))
     agent = get_agent()
-    result = agent.add_document(file.name)
+    result = agent.add_document(path)
     added   = result.get("added", [])
     skipped = result.get("skipped", [])
     chunks  = result.get("chunks", 0)
@@ -449,6 +454,23 @@ def connect_gmail(creds_path: str) -> str:
     return _connect_google(creds_path, "gmail")
 
 
+# Cloud-model dropdown options (label -> uses the 8B fast model when True).
+_CLOUD_MODEL_FAST_LABEL = "Llama 3.1 8B (fast, saves tokens)"
+_CLOUD_MODEL_QUALITY_LABEL = "Llama 3.3 70B (higher quality)"
+_CLOUD_MODEL_CHOICES = [_CLOUD_MODEL_FAST_LABEL, _CLOUD_MODEL_QUALITY_LABEL]
+
+
+def _cloud_model_label(use_fast: bool) -> str:
+    return _CLOUD_MODEL_FAST_LABEL if use_fast else _CLOUD_MODEL_QUALITY_LABEL
+
+
+def set_cloud_model(label: str) -> None:
+    """Persist the cloud planning/critique model choice from the dropdown."""
+    cfg = get_config()
+    cfg.use_fast_cloud_model = (label == _CLOUD_MODEL_FAST_LABEL)
+    save_config(cfg)  # the singleton is updated in place; _call_groq reads it
+
+
 # ---------------------------------------------------------------------------
 # Build UI
 # ---------------------------------------------------------------------------
@@ -461,13 +483,16 @@ def build_main_ui(cfg: AppConfig) -> gr.Blocks:
             footer { display: none !important; }
             .token-panel { font-family: monospace; font-size: 0.82em; }
             .level-table { margin-bottom: 8px; }
+            /* Force the trade-off table header cells white (dark-blue bg) so they
+               are readable in light mode too (theme otherwise makes them black). */
+            .level-table th { color: #ffffff !important; }
         """,
     ) as demo:
 
         gr.HTML("""
             <div style="text-align:center; padding:16px 0 8px 0">
-                <h1 style="color:#1B3A6B; font-size:2em; margin:0">🧠 KnowledgeMind</h1>
-                <p style="color:#555; margin:2px 0">
+                <h1 style="color:#3b82f6; font-size:2em; margin:0">🧠 KnowledgeMind</h1>
+                <p style="color:var(--body-text-color-subdued); margin:2px 0">
                     Privacy-Aware Personal AI Agent · IISc Bengaluru
                 </p>
             </div>
@@ -481,6 +506,14 @@ def build_main_ui(cfg: AppConfig) -> gr.Blocks:
 
                     # Left column: chat + controls
                     with gr.Column(scale=3):
+                        # Cloud model selector, on top of the chat window.
+                        cloud_model_dropdown = gr.Dropdown(
+                            choices=_CLOUD_MODEL_CHOICES,
+                            value=_cloud_model_label(cfg.use_fast_cloud_model),
+                            label="Cloud model (planning / critique)",
+                            info="8B saves Groq free-tier tokens; 70B is higher quality.",
+                            interactive=True,
+                        )
                         chatbot = gr.Chatbot(
                             label="Conversation",
                             height=420,
@@ -491,7 +524,9 @@ def build_main_ui(cfg: AppConfig) -> gr.Blocks:
                         with gr.Row():
                             msg_input = gr.Textbox(
                                 placeholder="Ask anything — scheduling, web search, documents, calendar...",
+                                label="Message",
                                 show_label=False,
+                                container=False,
                                 scale=5,
                             )
                             send_btn = gr.Button("Send", variant="primary", scale=1)
@@ -505,7 +540,8 @@ def build_main_ui(cfg: AppConfig) -> gr.Blocks:
                                 "L3 — Autonomous Agent (ReAct loop, most capable)",
                             ],
                             value="L2 — Workflow (plan→execute→critique)",
-                            label=None,
+                            label="Agency level",
+                            show_label=False,
                             info="Select agentic autonomy level. Higher = more capable but more tokens.",
                         )
 
@@ -658,6 +694,9 @@ def build_main_ui(cfg: AppConfig) -> gr.Blocks:
 
         connect_calendar_btn.click(connect_calendar, inputs=settings_google, outputs=google_status)
         connect_gmail_btn.click(connect_gmail, inputs=settings_google, outputs=google_status)
+
+        # Cloud-model dropdown: persists immediately, applies to the next query.
+        cloud_model_dropdown.change(set_cloud_model, inputs=cloud_model_dropdown, queue=False)
 
     return demo
 

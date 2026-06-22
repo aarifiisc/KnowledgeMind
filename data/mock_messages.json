@@ -4,23 +4,26 @@
     "channel_id": "C-PROJECT-ATLAS",
     "sender": "Priya",
     "text": "Hey, can we sync about the Atlas numbers? See you at 4 today.",
-    "timestamp": "2026-06-22T08:40:00",
+    "day_offset": 0,
+    "time": "08:40",
     "external_id": "slack-ts-001"
   },
   {
     "source": "slack",
     "channel_id": "C-PROJECT-ATLAS",
     "sender": "Arjun",
-    "text": "I'll have the design review agenda ready by EOD Monday.",
-    "timestamp": "2026-06-21T16:55:00",
+    "text": "I'll have the design review agenda ready by EOD today.",
+    "day_offset": 0,
+    "time": "09:15",
     "external_id": "slack-ts-002"
   },
   {
     "source": "slack",
     "channel_id": "C-GENERAL",
     "sender": "Lena",
-    "text": "Lunch Thursday around 12:30 at Cafe Verde? Lmk!",
-    "timestamp": "2026-06-19T11:02:00",
+    "text": "Lunch tomorrow around 12:30 at Cafe Verde? Lmk!",
+    "day_offset": 0,
+    "time": "11:02",
     "external_id": "slack-ts-003"
   },
   {
@@ -28,15 +31,44 @@
     "channel_id": "C-GENERAL",
     "sender": "Arjun",
     "text": "lol that meme was great",
-    "timestamp": "2026-06-19T13:10:00",
+    "day_offset": 0,
+    "time": "13:10",
     "external_id": "slack-ts-004"
   },
   {
     "source": "slack",
     "channel_id": "C-PROJECT-ATLAS",
     "sender": "Priya",
-    "text": "Maybe we grab coffee sometime next week to brainstorm?",
-    "timestamp": "2026-06-20T10:30:00",
+    "text": "Maybe we grab coffee day after tomorrow to brainstorm the roadmap?",
+    "day_offset": 0,
+    "time": "16:30",
     "external_id": "slack-ts-005"
+  },
+  {
+    "source": "slack",
+    "channel_id": "C-ENG",
+    "sender": "Rahul",
+    "text": "Can you review my PR before standup tomorrow at 10?",
+    "day_offset": 0,
+    "time": "18:05",
+    "external_id": "slack-ts-006"
+  },
+  {
+    "source": "slack",
+    "channel_id": "C-GENERAL",
+    "sender": "Sara",
+    "text": "Reminder: submit your timesheets by Friday EOD.",
+    "day_offset": 1,
+    "time": "09:00",
+    "external_id": "slack-ts-007"
+  },
+  {
+    "source": "slack",
+    "channel_id": "C-PROJECT-ATLAS",
+    "sender": "Arjun",
+    "text": "Let's do the sprint planning in 3 days at 11am, works for everyone?",
+    "day_offset": 1,
+    "time": "15:20",
+    "external_id": "slack-ts-008"
   }
 ]

@@ -53,6 +53,10 @@ class AppConfig:
     ollama_base_url: str = "http://localhost:11434"
     cloud_model: str = "llama-3.3-70b-versatile"
     cloud_model_fast: str = "llama-3.1-8b-instant"
+    # When True, cloud planning/critique uses cloud_model_fast (8B) instead of
+    # cloud_model (70B): far higher free-tier token budget, slightly lower
+    # quality. Defaults to True (8B) so the daily limit is not hit easily.
+    use_fast_cloud_model: bool = True
 
     # API keys
     groq_api_key: str = ""
