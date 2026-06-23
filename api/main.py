@@ -432,7 +432,11 @@ def get_nudges(limit: int = 20, undismissed: bool = True) -> dict:
         conn = get_db_connection(get_config().db_path)
         nudges = list_nudges(conn, limit=limit, undismissed_only=undismissed)
         conn.close()
-        return {"nudges": nudges}
+        import datetime as _dt
+        for _n in nudges:
+            if _n.get("generated_at") is not None:
+                _n["iso"] = _dt.datetime.fromtimestamp(_n["generated_at"]).isoformat(timespec="seconds")
+        return {"nudges": nudges, "active_count": len(nudges)}
     except Exception as e:
         return JSONResponse({"detail": str(e)}, status_code=500)
 

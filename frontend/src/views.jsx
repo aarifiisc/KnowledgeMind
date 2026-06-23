@@ -430,11 +430,242 @@ function humanCron(expr) {
   return expr;
 }
 
+const CheckIcon = svg(<polyline points="20 6 9 17 4 12"/>);
+const ClockIcon = svg(<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>);
+const SilentIcon = svg(<path d="M5 12h14"/>);
+
+export function Proactive({ refresh, notify }) {
+  const [briefing, setBriefing] = useState(null);
+  const [nudges, setNudges] = useState([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [jobs, setJobs] = useState([]);
+  const [jobErrors, setJobErrors] = useState([]);
+  const [firing, setFiring] = useState(false);
+  const [lastTick, setLastTick] = useState(null);
+  const [showDismissed, setShowDismissed] = useState(false);
+
+  function fetchAll(withDismissed) {
+    const d = withDismissed !== undefined ? withDismissed : showDismissed;
+    Promise.all([
+      getJSON("/api/briefing"),
+      getJSON("/api/nudges" + (d ? "?include_dismissed=true" : "")),
+      getJSON("/api/nudges/jobs"),
+    ]).then(([b, n, j]) => {
+      setBriefing(b.briefing || null);
+      setNudges(n.nudges || []);
+      setActiveCount(n.active_count || 0);
+      setJobs(j.jobs || []);
+      setJobErrors(j.errors || []);
+    }).catch(() => {});
+  }
+
+  useEffect(() => { fetchAll(showDismissed); }, [refresh, showDismissed]);
+
+  async function runNow() {
+    setFiring(true);
+    try {
+      const fired = [];
+      for (const job of jobs) {
+        const r = await postJSON(`/api/nudges/run/${encodeURIComponent(job.name)}`).catch(() => null);
+        if (!r) continue;
+        fired.push({
+          job: job.name,
+          surfaced: !!r.surfaced,
+          nudge_id: r.nudge && r.nudge.id,
+          answer: r.nudge && r.nudge.message,
+          reason: r.message,
+          routing_log: [],
+        });
+      }
+      setLastTick(fired);
+      fetchAll();
+      const surfaced = fired.filter((f) => f.surfaced).length;
+      notify(`${jobs.length} skill(s) ran · ${surfaced} new nudge(s)`);
+    } catch {
+      notify("Run failed — check the backend logs.");
+    }
+    setFiring(false);
+  }
+
+  async function dismiss(id) {
+    setNudges((prev) => prev.filter((n) => n.id !== id));
+    setActiveCount((c) => Math.max(0, c - 1));
+    await postJSON(`/api/nudges/${id}/dismiss`).catch(() => {});
+  }
+
+  const visibleNudges = showDismissed ? nudges : nudges.filter((n) => !n.dismissed);
+  const activeNudges = visibleNudges.filter((n) => !n.suppressed && !n.dismissed);
+  const suppressedNudges = visibleNudges.filter((n) => n.suppressed);
+
+  return (
+    <div className="view">
+      <div className="privacy-banner">
+        {ShieldIcon}
+        <div><strong>Every skill routes through the privacy layer.</strong> Personal data runs on-device (LOCAL). Nudges are stored only in your local database and never sent to the cloud.</div>
+      </div>
+
+      <div className="proactive-toprow">
+        <div>
+          <h2 className="section-title" style={{ margin: 0 }}>Today</h2>
+          {briefing && <div className="briefing-headline">{briefing.headline}</div>}
+        </div>
+        <button className="btn btn-primary" onClick={runNow} disabled={firing}>
+          {ClockIcon}<span>{firing ? "Running…" : "Run now"}</span>
+        </button>
+      </div>
+
+      <div className="kpi-row" style={{ marginTop: 16 }}>
+        <div className="kpi"><div className="num">{activeCount}</div><div className="lbl">Active nudges</div></div>
+        <div className="kpi"><div className="num">{jobs.length}</div><div className="lbl">Scheduled skills</div></div>
+        <div className="kpi"><div className="num">{briefing ? briefing.commitments_today.length : "—"}</div><div className="lbl">Commitments today</div></div>
+        <div className={"kpi" + (briefing && briefing.conflicts && briefing.conflicts.length > 0 ? " alert" : "")}>
+          <div className="num">{briefing ? briefing.conflicts.length : "—"}</div>
+          <div className="lbl">Conflicts</div>
+        </div>
+      </div>
+
+      <h2 className="section-title">Daily Briefing</h2>
+      <div className="card">
+        {!briefing
+          ? <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Loading briefing…</div>
+          : briefing.surface === false
+          ? <Empty big="🌅" title="Looks like a quiet day" sub="Nothing scheduled — enjoy the open space." />
+          : (
+            <>
+              <Md text={briefing.formatted} />
+              {(briefing.task_load || briefing.readiness) && (
+                <div className="briefing-chips">
+                  {briefing.task_load && (
+                    <>
+                      <span className={"chip " + (briefing.task_load.heavy_day ? "chip-demo" : "chip-muted")}>
+                        {briefing.task_load.due_today} due today
+                      </span>
+                      {briefing.task_load.overdue > 0 && (
+                        <span className="chip chip-demo">{briefing.task_load.overdue} overdue</span>
+                      )}
+                    </>
+                  )}
+                  {briefing.readiness && briefing.readiness.recovery_status && (
+                    <span className={"chip " + (briefing.readiness.low_hrv ? "chip-demo" : "chip-live")}>
+                      Recovery: {briefing.readiness.recovery_status}
+                    </span>
+                  )}
+                  {briefing.readiness && briefing.readiness.sleep_hours != null && (
+                    <span className="chip chip-muted">Slept {briefing.readiness.sleep_hours}h</span>
+                  )}
+                </div>
+              )}
+            </>
+          )
+        }
+      </div>
+
+      <div className="section-title-row">
+        <h2 className="section-title" style={{ margin: 0 }}>Nudge Feed</h2>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {activeCount > 0 && <span className="nudge-count-badge">{activeCount} active</span>}
+          <button className="btn" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setShowDismissed((x) => !x)}>
+            {showDismissed ? "Hide dismissed" : "Show dismissed"}
+          </button>
+        </div>
+      </div>
+      <div className="stack">
+        {activeNudges.length === 0 && suppressedNudges.length === 0
+          ? <Empty big="🔔" title="No nudges yet" sub='Press "Run now" to fire the scheduled skills.' />
+          : activeNudges.map((n) => (
+            <div key={n.id} className="tl nudge-item">
+              <div className="nudge-time">{relTime(n.iso)}</div>
+              <div className="body nudge-body"><Md text={n.message} /><div className="nudge-skill"><span className="badge badge-src">{n.skill || n.job_name}</span></div></div>
+              <button className="nudge-dismiss" aria-label="Dismiss" onClick={() => dismiss(n.id)}>✕</button>
+            </div>
+          ))
+        }
+        {suppressedNudges.length > 0 && (
+          <>
+            <div className="day-label" style={{ marginTop: 4, opacity: 0.7 }}>Held — quiet hours</div>
+            {suppressedNudges.map((n) => (
+              <div key={n.id} className="tl nudge-item nudge-suppressed">
+                <div className="nudge-time">{relTime(n.iso)}</div>
+                <div className="body nudge-body"><Md text={n.message} /><div className="nudge-skill"><span className="badge badge-src">{n.skill || n.job_name}</span></div></div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      <h2 className="section-title">Scheduled Skills</h2>
+      <div className="stack">
+        {jobs.length === 0
+          ? <Empty big="⚙️" title="No jobs loaded" sub="Check that hermes_jobs/*.json files are present." />
+          : jobs.map((job) => (
+            <div key={job.name} className="tl job-row">
+              <div className="job-dot" />
+              <div className="body">
+                <div className="t" style={{ fontWeight: 580 }}>{job.name.replace(/_/g, " ")}</div>
+                <div className="m" style={{ marginTop: 5 }}>
+                  <span className="job-schedule">{humanCron(job.schedule)}</span>
+                  <span className="badge badge-local">{job.skill}</span>
+                  {job.quiet_hours_aware && <span className="badge badge-src">quiet hours</span>}
+                </div>
+              </div>
+              <div className="job-lastrun"><span style={{ opacity: 0.45 }}>scheduled</span></div>
+            </div>
+          ))
+        }
+        {jobErrors.length > 0 && (
+          <div className="card" style={{ borderLeft: "3px solid var(--danger)" }}>
+            <strong style={{ color: "var(--danger)", fontSize: 13 }}>Load warnings</strong>
+            {jobErrors.map((e, i) => <div key={i} style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>{e}</div>)}
+          </div>
+        )}
+      </div>
+
+      {lastTick && (
+        <>
+          <h2 className="section-title">Last Run · Activity Trace</h2>
+          <div className="stack">
+            {lastTick.map((item, i) => (
+              <div key={i} className={"card trace-item" + (item.surfaced ? " trace-surfaced" : item.suppressed ? " trace-suppressed" : " trace-silent")}>
+                <div className="trace-head">
+                  <span className="trace-icon">{item.surfaced ? CheckIcon : item.suppressed ? ClockIcon : SilentIcon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="trace-job">{item.job}</div>
+                    <div style={{ fontSize: 12, marginTop: 2 }}>
+                      {item.surfaced
+                        ? <span style={{ color: "var(--local)", fontWeight: 600 }}>Nudge #{item.nudge_id} created</span>
+                        : item.suppressed
+                        ? <span style={{ color: "var(--text-muted)" }}>Suppressed · quiet hours</span>
+                        : <span style={{ color: "var(--text-muted)" }}>{item.reason || "Skill chose to stay silent"}</span>}
+                    </div>
+                  </div>
+                  {item.routing_log && item.routing_log.length > 0 && (
+                    <div className="route" style={{ flexShrink: 0 }}>
+                      {item.routing_log.map((e, j) => {
+                        const cloud = (JSON.stringify(e).toUpperCase()).includes("CLOUD");
+                        return <span key={j} className={"badge " + (cloud ? "badge-cloud" : "badge-local")}>{e.tool || e.action || "step"} · {cloud ? "CLOUD" : "LOCAL"}</span>;
+                      })}
+                    </div>
+                  )}
+                </div>
+                {item.surfaced && item.answer && (
+                  <div className="trace-answer"><Md text={item.answer} /></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ---- Settings ------------------------------------------------------------ */
 export function Settings() {
   const [cfg, setCfg] = useState(null);
   const [form, setForm] = useState({ local_model: "", google_credentials_path: "", complexity_threshold: 0.6, groq_api_key: "", tavily_api_key: "", slack_bot_token: "", allow_cloud_fallback: true });
   const [status, setStatus] = useState("");
+  const [janitor, setJanitor] = useState(null);
+  const [cleaning, setCleaning] = useState(false);
 
   useEffect(() => {
     getJSON("/api/config").then((c) => {
@@ -463,9 +694,21 @@ export function Settings() {
     }
   }
 
+  async function runJanitor(dryRun) {
+    setCleaning(true);
+    try {
+      const r = await postJSON(`/api/kg/janitor${dryRun ? "?dry_run=true" : ""}`);
+      setJanitor(r);
+    } catch {
+      setJanitor({ summary: "Cleanup failed." });
+    }
+    setCleaning(false);
+  }
+
   const hint = (s) => (s ? <span className="set-hint">✓ set</span> : null);
 
   return (
+    <>
     <div className="card">
       <h2 className="section-title" style={{ marginTop: 0 }}>Models &amp; keys</h2>
       <div className="form-grid">
@@ -486,6 +729,17 @@ export function Settings() {
       </div>
       <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "16px 0 0" }}>Keys are stored locally in your config file. Personal-data tasks always run on the local model; only low-sensitivity tasks may use the cloud model.</p>
     </div>
+
+    <div className="card" style={{ marginTop: 16 }}>
+      <h2 className="section-title" style={{ marginTop: 0 }}>Maintenance</h2>
+      <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "0 0 12px" }}>The knowledge-graph janitor archives stale commitments and prunes old conversation turns so conflict detection stays clean. It runs automatically at startup; trigger it manually here.</p>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <button className="btn" onClick={() => runJanitor(true)} disabled={cleaning}>Preview (dry run)</button>
+        <button className="btn btn-primary" onClick={() => runJanitor(false)} disabled={cleaning}>{cleaning ? "Running…" : "Run cleanup"}</button>
+        {janitor && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{janitor.summary}{janitor.dry_run ? " (dry run)" : ""}</span>}
+      </div>
+    </div>
+    </>
   );
 }
 
@@ -495,12 +749,15 @@ const pct = (x) => (x * 100).toFixed(1) + "%";
 export function Evaluation({ refresh, notify }) {
   const [report, setReport] = useState(undefined); // undefined=loading, null=none
   const [privacy, setPrivacy] = useState(null);
+  const [traces, setTraces] = useState([]);
   const [running, setRunning] = useState(false);
 
   const loadPrivacy = () => getJSON("/api/privacy/report").then(setPrivacy).catch(() => {});
+  const loadTraces = () => getJSON("/api/eval/traces?limit=20").then((d) => setTraces(d.traces || [])).catch(() => {});
   useEffect(() => {
     getJSON("/api/eval/report").then((d) => setReport(d.report)).catch(() => setReport(null));
     loadPrivacy();
+    loadTraces();
   }, [refresh]);
 
   async function runEval() {
@@ -509,6 +766,7 @@ export function Evaluation({ refresh, notify }) {
       const d = await postJSON("/api/eval/run", {});
       setReport(d.report);
       loadPrivacy();
+      loadTraces();
       notify?.("Evaluation complete");
     } catch {
       notify?.("Eval run failed");
@@ -528,6 +786,27 @@ export function Evaluation({ refresh, notify }) {
       {!report
         ? <Empty big="📊" title="No report yet" sub="Click “Run evaluation” to generate one (offline)." />
         : <EvalReport r={report} privacy={privacy} />}
+      {traces.length > 0 && <EvalTraces traces={traces} />}
+    </>
+  );
+}
+
+function EvalTraces({ traces }) {
+  return (
+    <>
+      <h2 className="section-title">Recent traces ({traces.length})</h2>
+      <div className="stack">
+        {traces.map((t) => (
+          <div className="card" key={t.trace_id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <span className="badge badge-local">{t.golden_id || "—"}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.input_preview}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.answer_preview}</div>
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t.agency_level} · {t.elapsed}s · {t.tokens ?? 0} tok</span>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
@@ -578,131 +857,3 @@ function EvalReport({ r, privacy }) {
   );
 }
 
-/* ---- Proactive runtime (Stream 2) ---------------------------------------- */
-export function Proactive({ refresh, notify }) {
-  const [briefing, setBriefing] = useState(null);
-  const [nudges, setNudges] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [running, setRunning] = useState("");
-
-  function reload() {
-    getJSON("/api/briefing").then((d) => setBriefing(d.briefing)).catch(() => {});
-    getJSON("/api/nudges").then((d) => setNudges(d.nudges || [])).catch(() => {});
-    getJSON("/api/nudges/jobs").then((d) => setJobs(d.jobs || [])).catch(() => {});
-  }
-  useEffect(() => { reload(); }, [refresh]);
-
-  async function runJob(name) {
-    setRunning(name);
-    try {
-      const d = await postJSON(`/api/nudges/run/${encodeURIComponent(name)}`, {});
-      notify?.(d.surfaced ? `${name}: nudge posted` : `${name}: stayed silent`);
-      getJSON("/api/nudges").then((d) => setNudges(d.nudges || [])).catch(() => {});
-    } catch {
-      notify?.(`${name}: run failed`);
-    }
-    setRunning("");
-  }
-
-  async function runAll() {
-    setRunning("*");
-    for (const j of jobs) {
-      try { await postJSON(`/api/nudges/run/${encodeURIComponent(j.name)}`, {}); } catch { /* continue */ }
-    }
-    getJSON("/api/nudges").then((d) => setNudges(d.nudges || [])).catch(() => {});
-    notify?.(`All ${jobs.length} skill(s) ran`);
-    setRunning("");
-  }
-
-  async function dismiss(id) {
-    setNudges((prev) => prev.filter((x) => x.id !== id));
-    postJSON(`/api/nudges/${id}/dismiss`, {}).catch(() => {});
-  }
-
-  return (
-    <div className="view">
-      <div className="privacy-banner">
-        {BellIcon}
-        <div><strong>Proactive runtime is privacy-aware.</strong> Hermes skills derive signals on-device — personal data never leaves your machine. The background scheduler is off by default; run skills manually below.</div>
-      </div>
-
-      <div className="proactive-toprow">
-        <div>
-          <h2 className="section-title" style={{ margin: 0 }}>Today</h2>
-          {briefing && <div className="briefing-headline">{briefing.headline}</div>}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{nudges.length} active nudge(s)</span>
-          <button className="btn btn-primary" onClick={runAll} disabled={!!running}>{running === "*" ? "Running…" : "Run all skills"}</button>
-        </div>
-      </div>
-
-      <div className="kpi-row" style={{ marginTop: 16 }}>
-        <div className="kpi"><div className="num">{nudges.length}</div><div className="lbl">Active nudges</div></div>
-        <div className="kpi"><div className="num">{jobs.length}</div><div className="lbl">Scheduled skills</div></div>
-        <div className="kpi"><div className="num">{briefing ? (briefing.commitments_today || []).length : "—"}</div><div className="lbl">Commitments today</div></div>
-        <div className={"kpi" + (briefing && briefing.conflicts && briefing.conflicts.length > 0 ? " alert" : "")}>
-          <div className="num">{briefing ? briefing.conflicts.length : "—"}</div>
-          <div className="lbl">Conflicts</div>
-        </div>
-      </div>
-
-      {briefing && <BriefingCard b={briefing} />}
-
-      <h2 className="section-title">Nudge Feed</h2>
-      <div className="stack">
-        {nudges.length === 0
-          ? <Empty big="🔔" title="No nudges yet" sub="Run a skill below to generate one." />
-          : nudges.map((n) => (
-            <div key={n.id} className="tl nudge-item">
-              <div className="nudge-time">{relTime(new Date(n.generated_at * 1000).toISOString())}</div>
-              <div className="body nudge-body">
-                <Md text={n.message} />
-                <div className="nudge-skill"><span className="badge badge-src">{n.skill || "skill"}</span>{n.job_name ? <span className="badge badge-src" style={{ marginLeft: 4 }}>{n.job_name}</span> : null}</div>
-              </div>
-              <button className="nudge-dismiss" aria-label="Dismiss" onClick={() => dismiss(n.id)}>✕</button>
-            </div>
-          ))}
-      </div>
-
-      <h2 className="section-title">Scheduled Skills</h2>
-      <div className="stack">
-        {jobs.length === 0
-          ? <Empty big="⚙️" title="No jobs loaded" sub="Check that hermes_jobs/*.json files are present." />
-          : jobs.map((j) => (
-            <div key={j.name} className="tl job-row">
-              <div className="job-dot" />
-              <div className="body">
-                <div className="t" style={{ fontWeight: 580 }}>{j.name.replace(/_/g, " ")}</div>
-                <div className="m" style={{ marginTop: 5 }}>
-                  <span className="job-schedule">{humanCron(j.schedule)}</span>
-                  <span className="badge badge-src">{j.skill}</span>
-                  {j.quiet_hours_aware && <span className="badge badge-src">quiet hours</span>}
-                </div>
-              </div>
-              <button className="btn" style={{ flexShrink: 0 }} onClick={() => runJob(j.name)} disabled={!!running}>
-                {running === j.name ? "Running…" : "Run"}
-              </button>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
-}
-
-function BriefingCard({ b }) {
-  const tl = b.task_load, rd = b.readiness;
-  return (
-    <div className="card" style={{ marginTop: 20 }}>
-      <h2 className="section-title" style={{ marginTop: 0 }}>Daily Briefing</h2>
-      {b.formatted ? <Md text={b.formatted} /> : <div style={{ fontSize: 14 }}>{b.headline}</div>}
-      {(tl || rd) && (
-        <div className="briefing-chips">
-          {tl && <><span className={"chip " + (tl.heavy_day ? "chip-demo" : "chip-muted")}>{tl.due_today ?? 0} due today</span>{tl.overdue > 0 && <span className="chip chip-demo">{tl.overdue} overdue</span>}{tl.heavy_day && <span className="chip chip-demo">heavy day</span>}</>}
-          {rd && rd.recovery_status && <span className={"chip " + (rd.low_hrv ? "chip-demo" : "chip-live")}>recovery: {rd.recovery_status}</span>}
-          {rd && rd.sleep_hours != null && <span className="chip chip-muted">sleep: {rd.sleep_hours}h</span>}
-        </div>
-      )}
-    </div>
-  );
-}

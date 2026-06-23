@@ -26,7 +26,6 @@ cd frontend && npm run dev                    # Vite on :5173 (proxies /api → 
 .venv/bin/python demo_conflicts.py            # end-to-end conflict demo (offline)
 .venv/bin/python -m kg.graph                  # per-module smoke test (each module has one;
                                                # see .github/workflows/ci.yml for the full list)
-.venv/bin/python -m runtime.tests             # proactive runtime unit tests (offline, stub LLM)
 
 # Eval harness (Stream 4 — agent quality/routing/latency)
 .venv/bin/python -m eval.runner                          # offline stub agent + stub judge
@@ -44,9 +43,10 @@ routing/router.py      → privacy + complexity classifier → LOCAL (Ollama) or
 agent/orchestrator.py  → HybridMindAgent, 3 agency levels (L1/L2/L3)
 agent/tools.py         → tool registry (dispatch_tool); every tool returns {success, formatted}
 monitor/fsm.py         → LangGraph FSM: POLL → EXTRACT → UPDATE → CHECK → ALERT
-runtime/               → Proactive runtime: loader (jobs/skills) + cron + runner (scheduler)
+proactive/             → Proactive runtime: loader (jobs/skills) + cron scheduler + runner
                          + briefing composer + dismissable nudge outbox
 kg/                    → SQLite + NetworkX KG; person-agnostic conflict detection
+kg/janitor.py          → memory mgmt: archive stale commitments + prune old turns
 extraction/            → spaCy NER + few-shot commitment extractor + timeparse.py resolver
 connectors/            → Slack/Calendar/Gmail (BaseConnector) + Hermes signal sources (below)
 tools/rag.py           → ChromaDB RAG over local documents
@@ -63,18 +63,20 @@ projmgmt/              → mounted sub-app at /projmgmt ("Project Advisor": SOW 
 `GET /api/status` · `POST /api/scan` · `GET /api/commitments` · `GET /api/conflicts` ·
 `POST /api/chat` · `GET|POST /api/documents` · `POST /api/rag/query` · `GET|POST /api/config` ·
 `GET /api/connectors` · `GET /api/briefing` · `GET /api/nudges` · `POST /api/nudges/{id}/dismiss` ·
-`GET /api/runtime/jobs` · `POST /api/runtime/tick` · `GET /api/audit` · `GET /api/privacy/report` ·
-`GET /api/eval/{report,traces,metrics}`. The static SPA is served at `/` (not gated, so the login
-screen can load); the **projmgmt** sub-app is mounted at `/projmgmt` (gated too — see below).
+`GET /api/nudges/jobs` · `POST /api/nudges/run/{job}` · `POST /api/kg/janitor` · `GET /api/audit` ·
+`GET /api/privacy/report` · `GET /api/eval/{report,traces,metrics}` · `POST /api/eval/run`. The static
+SPA is served at `/` (not gated, so the login screen can load); the **projmgmt** sub-app is mounted
+at `/projmgmt` (gated too — see below).
 
-### Proactive runtime (`runtime/`)
-Loader parses `hermes_jobs/*.json` + `hermes_skills/*.md`; the runner fires due jobs (hand-rolled
-cron, no new dep) and runs each skill **through `agent.run()`** (→ privacy router; never a direct
-cloud call), writing results to the nudge outbox. Clock + agent are injectable for offline tests
-(`python -m runtime.tests`). Quiet hours (`preemptive_quiet_hours_*`) queue nudges as `suppressed`
-instead of delivering. The background loop is **off by default** (`proactive_runtime_enabled`);
-`POST /api/runtime/tick` fires jobs manually. The runtime only *consumes* `run()` (additive — it
-surfaces `routing_log`/`token_summary`); Contract 2 is unchanged.
+### Proactive runtime (`proactive/`)
+Loader parses `hermes_jobs/*.json` + `hermes_skills/*.md`; the runner derives signals on-device and
+composes a nudge into the `nudges` table. A hand-rolled cron `scheduler` (daemon thread, no new dep)
+fires due jobs, but is **off by default** (`proactive_runtime_enabled`) so the no-Ollama Space never
+runs an unattended cron→Groq loop. `POST /api/nudges/run/{job}` fires a job manually; the React
+**Proactive** view lists jobs + nudges + a daily **briefing** (`proactive/briefing.py`, LLM-free,
+`status='active'` only). `kg/janitor.py` (run at startup + `POST /api/kg/janitor`) archives stale
+commitments + prunes turns. (The earlier `runtime/` package was the first cut of this and has been
+retired in favour of `proactive/`.)
 
 ### Access-key auth (api/main.py)
 Set `ACCESS_KEY` to lock the app: every `/api/*` **and `/projmgmt`** request must carry the key — as an `X-Access-Key` header (KM's fetch calls) or a `km_access` cookie (the projmgmt iframe, which can't set headers; mirrored from localStorage at login). Unset → open (local dev). The static SPA at `/` stays open so the login screen can load.
@@ -91,7 +93,7 @@ Set `ACCESS_KEY` to lock the app: every `/api/*` **and `/projmgmt`** request mus
 Every tool: `dict -> {"success": bool, "formatted": str, ...}`, never raises (`dispatch_tool` is the catch-all). `gmail action="send"` is blocked — sending requires an explicit confirmed UI action.
 
 ### Hermes connectors (signal sources)
-`connectors/{strava,spotify,todoist,apple_health}.py` derive **signals** (fitness/sleep/tasks/mood) — not messages or commitments — so they are wired as **agent tools** (`strava`, `apple_health`, `todoist`, `spotify` in `agent/tools.py`, via `hermes_tools/`), NOT into the monitor. Each derives locally, records a snapshot to `kg/connector_store.py` (a separate `connectors.db`), and falls back to mock data without keys. `GET /api/connectors` surfaces them; the React **Connectors** view renders them. `mcp_serve.py` optionally exposes the tools over MCP as a separate process (`python mcp_serve.py`). `hermes_skills/*.md` + `hermes_jobs/*.json` are design specs for a proactive cron runtime that is **not yet implemented** (no loader/runner).
+`connectors/{strava,spotify,todoist,apple_health}.py` derive **signals** (fitness/sleep/tasks/mood) — not messages or commitments — so they are wired as **agent tools** (`strava`, `apple_health`, `todoist`, `spotify` in `agent/tools.py`, via `hermes_tools/`), NOT into the monitor. Each derives locally, records a snapshot to `kg/connector_store.py` (a separate `connectors.db`), and falls back to mock data without keys. `GET /api/connectors` surfaces them; the React **Connectors** view renders them. `mcp_serve.py` optionally exposes the tools over MCP as a separate process (`python mcp_serve.py`). `hermes_skills/*.md` + `hermes_jobs/*.json` drive the **proactive runtime** (`proactive/`, above).
 
 ### Project Advisor (projmgmt sub-app)
 `projmgmt/` is a self-contained FastAPI app (own `backend/`, vanilla-JS frontend, `pm_config`, tests) **mounted at `/projmgmt`** by `api/main.py` (ASGI sub-app; the import is wrapped in try/except so a missing key just disables it without breaking KM). It ingests a Statement of Work → builds a project KG + rules → a chat advisor that rates alignment and flags deviations. It uses the **shared `GROQ_API_KEY`** (resolved in `projmgmt/backend/pm_config.py`), is surfaced in the React UI as the **Project Advisor** iframe view, and sits behind the same access-key lock (via the cookie). Its `data/` persistence is separate from KM's KG.
