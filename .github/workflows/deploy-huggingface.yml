@@ -33,6 +33,11 @@ jobs:
           git config user.email "ci@github-actions"
           git config user.name "github-actions"
           git checkout --orphan hf-deploy
+          # Drop the ECAI paper (report/) from the snapshot: it's a non-runtime
+          # binary that HF's pre-receive hook rejects. The repo keeps it; only the
+          # deployed Space snapshot is slimmed. (The tiny projmgmt/tests/sows/*.pdf
+          # fixtures stay — they're served by the scenarios feature at runtime.)
+          rm -rf report
           git add -A
           git commit -m "deploy ${GITHUB_SHA::7}"
           git push --force "https://hf:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID}.git" hf-deploy:main
