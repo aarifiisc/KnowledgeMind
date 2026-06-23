@@ -546,6 +546,37 @@ def briefing() -> dict:
     return {"briefing": compose_briefing(db_path=get_config().db_path)}
 
 
+def _ensure_connector_snapshots() -> None:
+    """Seed connectors.db so /api/insights has signals on first load.
+
+    Only polls connectors that have no snapshot yet, so re-loads stay cheap and
+    we don't grow the snapshot history on every request. Mirrors /api/connectors:
+    each tool derives its signals locally (LOCAL-pinned) and records a snapshot.
+    Best-effort — a missing key just yields mock signals; failures are ignored.
+    """
+    from kg import connector_store
+    from agent.tools import dispatch_tool
+    for name in ("strava", "apple_health", "todoist", "spotify"):
+        try:
+            if connector_store.get_latest(name) is None:
+                dispatch_tool(name, {})
+        except Exception:  # noqa: BLE001 -- seeding must never break the view
+            pass
+
+
+@app.get("/api/insights")
+def insights() -> dict:
+    """Cross-signal readiness: connector signals (sleep/recovery, task-load,
+    fitness, mood) fused with the commitment timeline into one deterministic
+    readiness-vs-load score (no LLM). See proactive/insights.py."""
+    from proactive.insights import compose_insights
+    try:
+        _ensure_connector_snapshots()
+        return compose_insights(db_path=get_config().db_path)
+    except Exception as e:  # noqa: BLE001 -- never 500 the UI
+        return JSONResponse({"detail": str(e)}, status_code=500)
+
+
 @app.get("/api/nudges/jobs")
 def nudge_jobs() -> dict:
     """Scheduled Hermes jobs the UI lists + triggers via POST /api/nudges/run/{name}."""

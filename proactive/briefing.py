@@ -34,17 +34,14 @@ from kg.queries import conflict_edges
 # ---------------------------------------------------------------------------
 
 def _default_signals() -> dict[str, Any]:
-    """Latest connector snapshots from connectors.db, or {} if unavailable."""
-    signals: dict[str, Any] = {}
-    try:
-        from kg import connector_store
-        for name in ("todoist", "apple_health", "strava", "spotify"):
-            latest = connector_store.get_latest(name)
-            if latest:
-                signals[name] = latest
-    except Exception:  # noqa: BLE001 — briefing must never crash on missing signals
-        pass
-    return signals
+    """Latest connector snapshots (present-only), or {} if unavailable.
+
+    Delegates to ``proactive.insights.gather_signals`` so the briefing and the
+    Insights view read the connector signals through one implementation (§4.1).
+    Filters to present-only to preserve this composer's original contract.
+    """
+    from proactive.insights import gather_signals
+    return {name: snap for name, snap in gather_signals().items() if snap}
 
 
 def _task_load(signals: dict[str, Any]) -> Optional[dict[str, Any]]:

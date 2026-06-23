@@ -1,8 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getJSON, postJSON, getKey, setKey, validateKey, setUnauthorizedHandler, clearKey } from "./api";
 import Login from "./Login.jsx";
-
-import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation, Proactive, SimChat } from "./views.jsx";
+import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation, Proactive, Insights, SimChat } from "./views.jsx";
 // Project Advisor pulls in cytoscape — lazy-load it so it stays out of the main bundle.
 const ProjectAdvisor = lazy(() => import("./projmgmt/ProjectAdvisor.jsx"));
 
@@ -19,6 +18,7 @@ const ICON = {
   privacy: ic(<><path d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-4z" /><path d="M9 12l2 2 4-4" /></>),
   evaluation: ic(<><path d="M3 3v18h18" /><rect x="7" y="10" width="3" height="7" /><rect x="12" y="6" width="3" height="11" /><rect x="17" y="13" width="3" height="4" /></>),
   proactive: ic(<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>),
+  insights: ic(<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />),
   simchat: ic(<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M8 10h8M8 14h5" /></>),
 
   refresh: ic(<><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 4v5h-5" /></>),
@@ -48,6 +48,7 @@ const NAV = [
   ["simchat", "SimChat"],
   ["connectors", "Connectors"],
   ["proactive", "Proactive"],
+  ["insights", "Insights"],
   ["assistant", "Assistant"],
   ["documents", "Documents"],
   ["privacy", "Privacy"],
@@ -63,6 +64,7 @@ const VIEW = {
   simchat: SimChat,
   connectors: Connectors,
   proactive: Proactive,
+  insights: Insights,
   assistant: Assistant,
   documents: Documents,
   privacy: Privacy,
