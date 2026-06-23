@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getJSON, postJSON, getKey, validateKey, setUnauthorizedHandler, clearKey } from "./api";
 import Login from "./Login.jsx";
-import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy } from "./views.jsx";
+import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation } from "./views.jsx";
 // Project Advisor pulls in cytoscape — lazy-load it so it stays out of the main bundle.
 const ProjectAdvisor = lazy(() => import("./projmgmt/ProjectAdvisor.jsx"));
 
@@ -15,6 +15,7 @@ const ICON = {
   settings:   ic(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>),
   shield:     ic(<><path d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-4z" /><path d="M9 12l2 2 4-4" /></>),
   privacy:    ic(<><path d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-4z" /><path d="M9 12l2 2 4-4" /></>),
+  evaluation: ic(<><path d="M3 3v18h18" /><rect x="7" y="10" width="3" height="7" /><rect x="12" y="6" width="3" height="11" /><rect x="17" y="13" width="3" height="4" /></>),
   refresh:    ic(<><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 4v5h-5" /></>),
   tests:      ic(<><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" /><path d="M9 3v6h6" /><path d="M8 13h8M8 17h4" /></>),
   beaker:     ic(<><path d="M6 2v6l-3 5a4 4 0 0 0 3.4 6h7.2A4 4 0 0 0 17 13L14 8V2" /><path d="M6 2h8" /><circle cx="10" cy="14" r="1.2" /></>),
@@ -43,6 +44,7 @@ const NAV = [
   ["assistant",    "Assistant"],
   ["documents",    "Documents"],
   ["privacy",      "Privacy"],
+  ["evaluation",   "Evaluation"],
   ["projadvisor",  "Project Advisor"],
   ["settings",     "Settings"],
 ];
@@ -55,6 +57,7 @@ const VIEW = {
   assistant:   Assistant,
   documents:   Documents,
   privacy:     Privacy,
+  evaluation:  Evaluation,
   projadvisor: ProjectAdvisor,
   settings:    Settings,
 };

@@ -13,6 +13,7 @@ const ShieldIcon = svg(<><path d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V
 const AlertIcon = svg(<><path d="M10.3 3.3l-8 14A2 2 0 0 0 4 20h16a2 2 0 0 0 1.7-2.7l-8-14a2 2 0 0 0-3.4 0z" /><path d="M12 9v4" /><path d="M12 17h.01" /></>);
 const SendIcon = svg(<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></>);
 const DocIcon = svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></>);
+const ChartIcon = svg(<><path d="M3 3v18h18" /><rect x="7" y="10" width="3" height="7" /><rect x="12" y="6" width="3" height="11" /><rect x="17" y="13" width="3" height="4" /></>);
 
 const TypeBadge = ({ t }) => {
   const k = (t || "").toLowerCase();
@@ -437,5 +438,94 @@ export function Settings() {
       </div>
       <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "16px 0 0" }}>Keys are stored locally in your config file. Personal-data tasks always run on the local model; only low-sensitivity tasks may use the cloud model.</p>
     </div>
+  );
+}
+
+/* ---- Evaluation (Stream 4) ----------------------------------------------- */
+const pct = (x) => (x * 100).toFixed(1) + "%";
+
+export function Evaluation({ refresh, notify }) {
+  const [report, setReport] = useState(undefined); // undefined=loading, null=none
+  const [privacy, setPrivacy] = useState(null);
+  const [running, setRunning] = useState(false);
+
+  const loadPrivacy = () => getJSON("/api/privacy/report").then(setPrivacy).catch(() => {});
+  useEffect(() => {
+    getJSON("/api/eval/report").then((d) => setReport(d.report)).catch(() => setReport(null));
+    loadPrivacy();
+  }, [refresh]);
+
+  async function runEval() {
+    setRunning(true);
+    try {
+      const d = await postJSON("/api/eval/run", {});
+      setReport(d.report);
+      loadPrivacy();
+      notify?.("Evaluation complete");
+    } catch {
+      notify?.("Eval run failed");
+    }
+    setRunning(false);
+  }
+
+  if (report === undefined) return <Empty big="📊" title="Loading evaluation…" sub="" />;
+
+  return (
+    <>
+      <div className="privacy-banner">{ChartIcon}<div><strong>Week-05 evaluation harness.</strong> Routing accuracy, latency, tokens, and a validated LLM-as-judge (TPR/TNR with 95% CIs) over a versioned golden set. Offline stub by default — no keys needed.</div></div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 16px", flexWrap: "wrap" }}>
+        <button className="btn btn-primary" onClick={runEval} disabled={running}>{running ? "Running…" : "Run evaluation"}</button>
+        {report && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>mode {report.mode} · judge {report.judge_backend} · n={report.n_cases} · {new Date(report.generated_at).toLocaleString()}</span>}
+      </div>
+      {!report
+        ? <Empty big="📊" title="No report yet" sub="Click “Run evaluation” to generate one (offline)." />
+        : <EvalReport r={report} privacy={privacy} />}
+    </>
+  );
+}
+
+function EvalReport({ r, privacy }) {
+  const m = r.metrics, ra = m.routing_accuracy, j = m.judge;
+  const kpis = [
+    { n: pct(ra.value), l: `Routing accuracy [${pct(ra.ci_low)}–${pct(ra.ci_high)}]`, alert: ra.label !== "PASS" },
+    { n: pct(j.tpr), l: "Judge TPR (recall)", alert: j.tpr < 0.8 },
+    { n: pct(j.tnr), l: "Judge TNR", alert: j.tnr < 0.8 },
+    { n: m.latency.mean_s + "s", l: "Mean latency" },
+  ];
+  return (
+    <>
+      <div className="kpi-row">{kpis.map((k, i) => <div key={i} className={"kpi" + (k.alert ? " alert" : "")}><div className="num">{k.n}</div><div className="lbl">{k.l}</div></div>)}</div>
+
+      <h2 className="section-title">Judge confusion matrix</h2>
+      <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, textAlign: "center" }}>
+        {[["TP", j.tp], ["TN", j.tn], ["FP", j.fp], ["FN", j.fn]].map(([k, v]) => (
+          <div key={k}><div style={{ fontSize: 22, fontWeight: 700 }}>{v}</div><div style={{ fontSize: 12, color: "var(--text-muted)" }}>{k}</div></div>
+        ))}
+      </div>
+
+      {privacy && (
+        <>
+          <h2 className="section-title">Privacy posture (Stream 3)</h2>
+          <div className="kpi-row">
+            <div className="kpi"><div className="num">{privacy.pct_local}%</div><div className="lbl">Routed LOCAL</div></div>
+            <div className="kpi"><div className="num">{privacy.leaks_prevented}</div><div className="lbl">Leaks prevented</div></div>
+            <div className={"kpi" + (privacy.personal_fallbacks > 0 ? " alert" : "")}><div className="num">{privacy.personal_fallbacks}</div><div className="lbl">Personal cloud fallbacks</div></div>
+          </div>
+        </>
+      )}
+
+      <h2 className="section-title">Silent failures ({r.silent_failures.length})</h2>
+      <div className="stack">
+        {r.silent_failures.length === 0
+          ? <Empty big="✅" title="No silent failures" sub="No fluent-but-wrong answers flagged." />
+          : r.silent_failures.map((sf, i) => (
+            <div className="card" key={i}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span className="badge badge-cloud">{sf.case_id}</span><span style={{ fontSize: 12, color: "var(--text-muted)" }}>confidence {sf.confidence}</span></div>
+              <div style={{ marginTop: 6, fontSize: 13 }}>{sf.reason}</div>
+              {sf.answer_preview ? <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>{sf.answer_preview}</div> : null}
+            </div>
+          ))}
+      </div>
+    </>
   );
 }

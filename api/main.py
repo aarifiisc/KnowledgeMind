@@ -566,6 +566,16 @@ def eval_metrics() -> dict:
     }
 
 
+@app.post("/api/eval/run")
+def eval_run(live: bool = False) -> dict:
+    """Run the eval harness and return the fresh report. Defaults to the offline
+    stub (no keys, no Groq); pass ?live=true to run the real agent + Groq judge."""
+    from eval.runner import run_eval
+    report = run_eval(live=live, judge_backend="groq" if live else "stub")
+    report.pop("_report_path", None)
+    return {"report": report}
+
+
 # ---------------------------------------------------------------------------
 # projmgmt addon — mount as ASGI sub-application at /projmgmt
 # ---------------------------------------------------------------------------
