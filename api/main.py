@@ -406,7 +406,7 @@ def connectors() -> dict:
 # the import. The module name pm_config (not config) avoids colliding with KM's
 # own config/ package.
 
-_PM_BACKEND = Path(__file__).resolve().parent.parent.parent / "projmgmt" / "backend"
+_PM_BACKEND = Path(__file__).resolve().parent.parent / "projmgmt" / "backend"
 
 if _PM_BACKEND.exists():
     sys.path.insert(0, str(_PM_BACKEND))

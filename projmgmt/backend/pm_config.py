@@ -21,7 +21,7 @@ from groq import Groq
 
 _HERE = Path(__file__).parent        # backend/
 _ROOT = _HERE.parent                 # projmgmt/
-_KM_REPO = _ROOT.parent / "KnowledgeMind"
+_KM_REPO = _ROOT.parent              # KnowledgeMind/ (projmgmt now lives inside KM)
 
 
 def _km_app_config_path() -> Path:
