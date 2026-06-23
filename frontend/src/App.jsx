@@ -101,7 +101,7 @@ export default function App() {
   useEffect(() => {
     if (!authed) return;
     getJSON("/api/status").then((s) => setMode(s.assistant_mode)).catch(() => {});
-    getJSON("/api/nudges").then((n) => setNudgeCount(n.active_count || 0)).catch(() => {});
+    getJSON("/api/nudges").then((n) => setNudgeCount((n.nudges || []).length)).catch(() => {});
   }, [authed, refresh]);
 
   async function runScan() {
