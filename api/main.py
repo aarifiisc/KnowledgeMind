@@ -22,12 +22,17 @@ Then open http://127.0.0.1:8000
 
 from __future__ import annotations
 
+import hmac
+import os
 import re
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -46,9 +51,12 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 _CANNED = {
     "see you at 4": '{"is_commitment": true, "confidence": 0.78, "time_expression": "at 4 today", "normalized_ts": null, "commitment_type": "SOFT"}',
-    "eod monday": '{"is_commitment": true, "confidence": 0.82, "time_expression": "EOD Monday", "normalized_ts": null, "commitment_type": "SOFT"}',
-    "lunch thursday": '{"is_commitment": true, "confidence": 0.70, "time_expression": "Thursday 12:30", "normalized_ts": null, "commitment_type": "SOFT"}',
-    "next week": '{"is_commitment": true, "confidence": 0.45, "time_expression": "next week", "normalized_ts": null, "commitment_type": "TENTATIVE"}',
+    "eod today": '{"is_commitment": true, "confidence": 0.82, "time_expression": "EOD today", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "lunch tomorrow": '{"is_commitment": true, "confidence": 0.70, "time_expression": "tomorrow 12:30", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "review my pr": '{"is_commitment": true, "confidence": 0.70, "time_expression": "tomorrow at 10", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "timesheets": '{"is_commitment": true, "confidence": 0.65, "time_expression": "Friday EOD", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "sprint planning": '{"is_commitment": true, "confidence": 0.75, "time_expression": "in 3 days at 11am", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "grab coffee": '{"is_commitment": true, "confidence": 0.45, "time_expression": "day after tomorrow", "normalized_ts": null, "commitment_type": "TENTATIVE"}',
 }
 _NON_COMMITMENT = '{"is_commitment": false, "confidence": 0.05, "time_expression": "", "normalized_ts": null, "commitment_type": "TENTATIVE"}'
 
@@ -107,6 +115,34 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="KnowledgeMind", lifespan=lifespan)
+
+# --- access-key auth ("static auth") ----------------------------------------
+# Set ACCESS_KEY in the environment to lock the app: every /api/* request must
+# then carry a matching X-Access-Key header (else 401). When ACCESS_KEY is unset
+# (local dev / tests) the API is open. The key is never stored in the repo/build.
+ACCESS_KEY = os.environ.get("ACCESS_KEY", "").strip()
+
+
+@app.middleware("http")
+async def access_key_guard(request: Request, call_next):
+    path = request.url.path
+    if ACCESS_KEY and path.startswith("/api/") and request.method != "OPTIONS":
+        provided = request.headers.get("X-Access-Key", "")
+        if not hmac.compare_digest(provided, ACCESS_KEY):
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return await call_next(request)
+
+
+# CORS added after the auth middleware so it stays outermost -> CORS headers are
+# present even on 401s. Set ALLOWED_ORIGINS (comma-separated) to the Vercel URL.
+_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins or ["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -235,7 +271,7 @@ def _demo_chat(message: str) -> dict:
                 "routing_log": [{"action": "web_search", "decision": "CLOUD"}],
                 "demo_mode": True}
     if any(k in m for k in ("book", "doctor", "4 pm", "4pm", "schedule", "appointment")):
-        return {"answer": "(demo) 4 PM clashes with '1:1 with Priya' on your calendar. "
+        return {"answer": "(demo) 4 PM clashes with your 'Dentist appointment' on your calendar. "
                           "I can book it at 5 PM instead — all checks ran on-device.",
                 "routing_log": [{"action": "query_kg", "decision": "LOCAL"},
                                  {"action": "find_free_slots", "decision": "LOCAL"},
@@ -243,7 +279,7 @@ def _demo_chat(message: str) -> dict:
                 "demo_mode": True}
     if any(k in m for k in ("conflict", "clash", "this week", "priya", "deadline")):
         return {"answer": "(demo) From your knowledge graph: a Slack note 'see you at 4' overlaps "
-                          "your calendar '1:1 with Priya' at 16:00. Everything stayed local.",
+                          "your 'Dentist appointment' (~16:00). Everything stayed local.",
                 "routing_log": [{"action": "query_kg", "decision": "LOCAL"},
                                  {"action": "conflict_edges", "decision": "LOCAL"}],
                 "demo_mode": True}
@@ -269,15 +305,98 @@ def chat(inp: ChatIn) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Static front-end
+# Documents (RAG over local files)
 # ---------------------------------------------------------------------------
 
-app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+@app.get("/api/documents")
+def list_documents() -> dict:
+    from tools.rag import rag_tool
+    return {"documents": rag_tool.list_documents()}
 
 
-@app.get("/")
-def index():
-    return FileResponse(str(FRONTEND_DIR / "index.html"))
+@app.post("/api/documents")
+async def upload_document(file: UploadFile = File(...)) -> dict:
+    from tools.rag import rag_tool
+    tmp_dir = Path(tempfile.mkdtemp(prefix="km_upload_"))
+    dest = tmp_dir / (file.filename or "upload.txt")
+    dest.write_bytes(await file.read())
+    try:
+        result = rag_tool.add_documents([str(dest)])
+    finally:
+        try:
+            dest.unlink()
+            tmp_dir.rmdir()
+        except OSError:
+            pass
+    return result
+
+
+class RagQuery(BaseModel):
+    query: str
+
+
+@app.post("/api/rag/query")
+def rag_query(q: RagQuery) -> dict:
+    from tools.rag import rag_tool
+    return rag_tool.query(q.query)
+
+
+# ---------------------------------------------------------------------------
+# Settings (config) -- model, keys, threshold
+# ---------------------------------------------------------------------------
+
+@app.get("/api/config")
+def get_config_api() -> dict:
+    cfg = get_config()
+    return {
+        "local_model": cfg.local_model,
+        "ollama_base_url": cfg.ollama_base_url,
+        "cloud_model": cfg.cloud_model,
+        "complexity_threshold": cfg.complexity_threshold,
+        "google_credentials_path": cfg.google_credentials_path,
+        "groq_api_key_set": bool(cfg.groq_api_key),
+        "tavily_api_key_set": bool(cfg.tavily_api_key),
+        "slack_bot_token_set": bool(cfg.slack_bot_token),
+    }
+
+
+class ConfigUpdate(BaseModel):
+    local_model: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    tavily_api_key: Optional[str] = None
+    slack_bot_token: Optional[str] = None
+    google_credentials_path: Optional[str] = None
+    complexity_threshold: Optional[float] = None
+
+
+@app.post("/api/config")
+def set_config_api(upd: ConfigUpdate) -> dict:
+    from config.store import update_config
+    fields = {k: v for k, v in upd.model_dump().items() if v is not None and v != ""}
+    if fields:
+        update_config(**fields)            # persist to config.json (real paths)
+        cfg = get_config()                 # live-update the running singleton,
+        for key, value in fields.items():  # keeping the demo db_path override
+            setattr(cfg, key, value)
+    return {"ok": True, "saved": list(fields.keys())}
+
+
+# ---------------------------------------------------------------------------
+# Static front-end (built React SPA in frontend/dist)
+# ---------------------------------------------------------------------------
+
+DIST_DIR = FRONTEND_DIR / "dist"
+
+if DIST_DIR.exists():
+    # html=True serves index.html at "/" and the hashed assets under /assets.
+    app.mount("/", StaticFiles(directory=str(DIST_DIR), html=True), name="spa")
+else:
+    @app.get("/")
+    def _needs_build():
+        return JSONResponse(
+            {"detail": "Frontend not built. Run: cd frontend && npm install && npm run build"},
+            status_code=200,
+        )
 
 
 if __name__ == "__main__":

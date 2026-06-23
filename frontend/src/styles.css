@@ -215,13 +215,42 @@ body {
   background: var(--bg); color: var(--text); font: inherit; font-size: 13px; }
 .chat-hint { color: var(--text-muted); font-size: 13px; text-align: center; margin: auto; max-width: 420px; }
 
+/* Documents + Settings ---------------------------------------------------- */
+.doc-row { display: flex; align-items: center; gap: 11px; padding: 12px 15px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.doc-row .icon { color: var(--accent); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 13px;
+  color: var(--text-muted); font-weight: 550; }
+.set-hint { color: var(--local); font-weight: 650; font-size: 11px; }
+#doc-file { padding: 8px 10px; }
+
 /* Toast ------------------------------------------------------------------- */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px;
   font-size: 13px; font-weight: 560; box-shadow: var(--shadow); z-index: 50; }
 
+/* Login + boot ------------------------------------------------------------ */
+.boot { display: flex; align-items: center; justify-content: center; gap: 10px; height: 100vh;
+  color: var(--text-muted); font-size: 15px; }
+.boot .brand-mark { font-size: 22px; }
+.login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+.login-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 26px; display: flex;
+  flex-direction: column; gap: 14px; }
+.login-brand { font-size: 20px; font-weight: 700; letter-spacing: -.3px; display: flex; align-items: center; gap: 8px; }
+.login-brand .brand-mark { font-size: 22px; }
+.login-sub { color: var(--text-muted); font-size: 13.5px; margin: -4px 0 4px; }
+.login-error { color: var(--danger); font-size: 13px; }
+.login-foot { color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 2px; }
+.lock-btn { margin-top: 10px; width: 100%; padding: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted); border-radius: var(--radius-sm);
+  font: inherit; font-size: 12.5px; cursor: pointer; }
+.lock-btn:hover { color: var(--text); background: var(--surface-2); }
+
 @media (max-width: 720px) {
   .app { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; }
 }

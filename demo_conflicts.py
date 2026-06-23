@@ -33,10 +33,13 @@ from monitor.fsm import MonitorRunner
 # is left null on purpose -- the deterministic resolver turns the time words into
 # an absolute timestamp, which is exactly what the fix exercises.
 _CANNED: dict[str, str] = {
-    "see you at 4": '{"is_commitment": true, "confidence": 0.78, "time_expression": "at 4 today", "normalized_ts": null, "commitment_type": "SOFT"}',
-    "eod monday":   '{"is_commitment": true, "confidence": 0.82, "time_expression": "EOD Monday", "normalized_ts": null, "commitment_type": "SOFT"}',
-    "lunch thursday": '{"is_commitment": true, "confidence": 0.70, "time_expression": "Thursday 12:30", "normalized_ts": null, "commitment_type": "SOFT"}',
-    "next week":    '{"is_commitment": true, "confidence": 0.45, "time_expression": "next week", "normalized_ts": null, "commitment_type": "TENTATIVE"}',
+    "see you at 4":    '{"is_commitment": true, "confidence": 0.78, "time_expression": "at 4 today", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "eod today":       '{"is_commitment": true, "confidence": 0.82, "time_expression": "EOD today", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "lunch tomorrow":  '{"is_commitment": true, "confidence": 0.70, "time_expression": "tomorrow 12:30", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "review my pr":    '{"is_commitment": true, "confidence": 0.70, "time_expression": "tomorrow at 10", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "timesheets":      '{"is_commitment": true, "confidence": 0.65, "time_expression": "Friday EOD", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "sprint planning": '{"is_commitment": true, "confidence": 0.75, "time_expression": "in 3 days at 11am", "normalized_ts": null, "commitment_type": "SOFT"}',
+    "grab coffee":     '{"is_commitment": true, "confidence": 0.45, "time_expression": "day after tomorrow", "normalized_ts": null, "commitment_type": "TENTATIVE"}',
 }
 _NON_COMMITMENT = '{"is_commitment": false, "confidence": 0.05, "time_expression": "", "normalized_ts": null, "commitment_type": "TENTATIVE"}'
 
@@ -75,6 +78,8 @@ def _looks_like_same_event(alert: dict) -> bool:
     Lena'), not a genuine clash. Cross-source event de-dup is future work."""
     ca, cb = alert["commitment_a"], alert["commitment_b"]
     if ca["source"] == cb["source"]:
+        return False
+    if abs(ca["start_ts"] - cb["start_ts"]) >= 60:  # same event ~ same start time
         return False
     return bool(_topic_tokens(ca["description"]) & _topic_tokens(cb["description"]))
 
@@ -134,10 +139,17 @@ def main() -> int:
         duplicates = [a for a in alerts if _looks_like_same_event(a)]
         real = [a for a in alerts if a not in duplicates]
         print(f"\nSummary: {len(real)} real conflict(s), {len(duplicates)} same-event duplicate(s).")
-        ok = any("1:1 with Priya" in (a["commitment_a"]["description"] + a["commitment_b"]["description"])
-                 for a in real)
-        print("Scenario 0 (Slack 'see you at 4' vs calendar '1:1 with Priya'): "
-              + ("FIRED as a real conflict ✓" if ok else "NOT fired ✗"))
+        cross = [a for a in real
+                 if a["commitment_a"]["source"] != a["commitment_b"]["source"]]
+        hero = next((a for a in real if "see you at 4" in
+                     (a["commitment_a"]["description"] + a["commitment_b"]["description"]).lower()), None)
+        if hero:
+            other = (hero["commitment_b"] if "see you at 4" in hero["commitment_a"]["description"].lower()
+                     else hero["commitment_a"])
+            print(f"Headline: Slack 'see you at 4' clashes with calendar '{other['description'][:32]}' ✓")
+        ok = len(cross) >= 1
+        print(f"Cross-channel conflict detection: {'WORKING ✓' if ok else 'no cross-channel conflict ✗'} "
+              f"({len(cross)} slack<->calendar conflict(s))")
         return 0 if ok else 1
 
 

@@ -51,10 +51,11 @@ slack-sdk
 
 # -- Knowledge graph ---------------------------------------------------------
 networkx
-pyvis
 
-# -- UI / config / utilities -------------------------------------------------
-gradio
+# -- Web UI (FastAPI backend + static front-end) -----------------------------
+fastapi
+uvicorn
+python-multipart
 python-dotenv
 pydantic
 rich

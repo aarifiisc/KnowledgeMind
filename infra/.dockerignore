@@ -1,0 +1,13 @@
+.git/
+.github/
+.venv/
+**/__pycache__/
+**/*.pyc
+frontend/node_modules/
+frontend/dist/
+infra/
+*.log
+*.db
+chroma_db/
+TEAM_PLAN.md
+specs/

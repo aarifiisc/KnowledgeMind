@@ -1,0 +1,36 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pushes the repo to a HF Space (Docker SDK). The Space builds infra/Dockerfile,
+# which compiles the React app and runs FastAPI on :7860.
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stage Space files at repo root
+        run: |
+          cp infra/Dockerfile ./Dockerfile
+          cp infra/.dockerignore ./.dockerignore
+          cp infra/huggingface/README.md ./README.md
+          git config user.email "ci@github-actions"
+          git config user.name "github-actions"
+          git add -f Dockerfile .dockerignore README.md
+          git commit -m "deploy ${GITHUB_SHA::7}" || echo "nothing to commit"
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE_ID" ]; then
+            echo "::error::HF_TOKEN and HF_SPACE_ID secrets are required."; exit 1
+          fi
+          git push --force "https://hf:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID}.git" HEAD:main
