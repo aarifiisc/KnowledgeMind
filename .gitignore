@@ -74,5 +74,4 @@ npm-debug.log*
 /*.png
 
 # Claude files
-spec.md
 plan.md
