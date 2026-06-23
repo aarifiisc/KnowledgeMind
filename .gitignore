@@ -69,3 +69,6 @@ Thumbs.db
 node_modules/
 frontend/dist/
 npm-debug.log*
+
+# Demo screenshots / captures — keep binaries out of git (HF Spaces rejects them)
+/*.png
