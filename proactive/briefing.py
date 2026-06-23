@@ -1,6 +1,6 @@
 """
-runtime/briefing.py
--------------------
+proactive/briefing.py
+---------------------
 FR-2.3 — Daily-briefing composer.
 
 Deterministically composes a digest of *today*:
@@ -272,4 +272,4 @@ if __name__ == "__main__":
         assert "Lunch with Lena" in digest["formatted"]
         assert "Recovery is low" in digest["formatted"], "fusion rule should fire"
         print(digest["formatted"])
-        print("\nruntime/briefing.py smoke tests passed.")
+        print("\nproactive/briefing.py smoke tests passed.")
