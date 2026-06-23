@@ -1,6 +1,6 @@
 """
-runtime/briefing.py
--------------------
+proactive/briefing.py
+---------------------
 FR-2.3 — Daily-briefing composer.
 
 Deterministically composes a digest of *today*:
@@ -87,7 +87,7 @@ def _commitments_for_day(conn, day: datetime.date) -> list[dict[str, Any]]:
         """SELECT c.description, c.source, c.commitment_type, c.start_ts,
                   COALESCE(p.name, '(self)') AS who
            FROM commitments c LEFT JOIN persons p ON c.person_id = p.id
-           WHERE c.start_ts BETWEEN ? AND ?
+           WHERE c.status = 'active' AND c.start_ts BETWEEN ? AND ?
            ORDER BY c.start_ts""",
         (start, end),
     ).fetchall()
@@ -108,7 +108,7 @@ def _upcoming(conn, after_ts: float, limit: int = 3) -> list[dict[str, Any]]:
     rows = conn.execute(
         """SELECT c.description, c.start_ts, COALESCE(p.name, '(self)') AS who
            FROM commitments c LEFT JOIN persons p ON c.person_id = p.id
-           WHERE c.start_ts > ? ORDER BY c.start_ts LIMIT ?""",
+           WHERE c.status = 'active' AND c.start_ts > ? ORDER BY c.start_ts LIMIT ?""",
         (after_ts, limit),
     ).fetchall()
     return [
@@ -272,4 +272,4 @@ if __name__ == "__main__":
         assert "Lunch with Lena" in digest["formatted"]
         assert "Recovery is low" in digest["formatted"], "fusion rule should fire"
         print(digest["formatted"])
-        print("\nruntime/briefing.py smoke tests passed.")
+        print("\nproactive/briefing.py smoke tests passed.")

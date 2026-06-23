@@ -13,6 +13,8 @@ const ShieldIcon = svg(<><path d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V
 const AlertIcon = svg(<><path d="M10.3 3.3l-8 14A2 2 0 0 0 4 20h16a2 2 0 0 0 1.7-2.7l-8-14a2 2 0 0 0-3.4 0z" /><path d="M12 9v4" /><path d="M12 17h.01" /></>);
 const SendIcon = svg(<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></>);
 const DocIcon = svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></>);
+const ChartIcon = svg(<><path d="M3 3v18h18" /><rect x="7" y="10" width="3" height="7" /><rect x="12" y="6" width="3" height="11" /><rect x="17" y="13" width="3" height="4" /></>);
+const BellIcon = svg(<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>);
 
 const TypeBadge = ({ t }) => {
   const k = (t || "").toLowerCase();
@@ -239,7 +241,7 @@ export function Assistant() {
     setBusy(true);
     try {
       const r = await postJSON("/api/chat", { message: m, level });
-      setMsgs((x) => [...x, { role: "bot", text: r.answer, routing: r.routing_log, demo: r.demo_mode }]);
+      setMsgs((x) => [...x, { role: "bot", text: r.answer, routing: r.routing_log, demo: r.demo_mode, privacy: r.privacy }]);
     } catch {
       setMsgs((x) => [...x, { role: "bot", text: "Sorry — the assistant is unavailable." }]);
     }
@@ -253,6 +255,7 @@ export function Assistant() {
           <div key={i} className={"msg " + msg.role}>
             <div className="bubble">{msg.text}</div>
             {msg.routing && msg.routing.length ? <RouteChips log={msg.routing} /> : null}
+            {msg.privacy ? <PrivacyBadge p={msg.privacy} /> : null}
             {msg.demo ? <div className="demo-note">demo response · add a model for live answers</div> : null}
           </div>
         ))}
@@ -280,6 +283,58 @@ function RouteChips({ log }) {
       })}
     </div>
   );
+}
+
+// Honest per-turn badge: reflects what ACTUALLY executed, including fallbacks.
+function PrivacyBadge({ p }) {
+  if (!p) return null;
+  if (p.personal_fallback)
+    return <div className="route"><span className="badge badge-cloud" title="On-device model unavailable — personal data fell back to the cloud this turn">⚠ Cloud fallback · personal</span></div>;
+  if (p.fallback_blocked)
+    return <div className="route"><span className="badge badge-local" title="On-device model unavailable — fail-closed kept personal data on your device">🔒 Local-only · fail-closed</span></div>;
+  return <div className="route"><span className={"badge " + (p.cloud ? "badge-cloud" : "badge-local")}>{p.cloud ? "Cloud" : "Local"} · this turn</span></div>;
+}
+
+/* ---- Privacy dashboard --------------------------------------------------- */
+export function Privacy({ refresh }) {
+  const [report, setReport] = useState(null);
+  const [records, setRecords] = useState([]);
+  useEffect(() => {
+    Promise.all([getJSON("/api/privacy/report"), getJSON("/api/audit?limit=40")])
+      .then(([rep, aud]) => { setReport(rep); setRecords((aud.records || []).slice().reverse()); })
+      .catch(() => {});
+  }, [refresh]);
+  if (!report) return <Empty big="🔒" title="Loading privacy report…" sub="" />;
+  const kpis = [
+    { n: report.pct_local + "%", l: "Decisions routed LOCAL" },
+    { n: report.leaks_prevented, l: "Leaks prevented (fail-closed)" },
+    { n: report.personal_fallbacks, l: "Personal cloud fallbacks", alert: report.personal_fallbacks > 0 },
+    { n: report.total_decisions, l: "Routing decisions" },
+  ];
+  return (
+    <>
+      <div className="privacy-banner">{ShieldIcon}<div><strong>Provable privacy.</strong> Every routing decision and every local→cloud fallback is logged here. Personal work fails closed when the on-device model is unavailable — toggle it in Settings.</div></div>
+      <div className="kpi-row">{kpis.map((k, i) => <div key={i} className={"kpi" + (k.alert ? " alert" : "")}><div className="num">{k.n}</div><div className="lbl">{k.l}</div></div>)}</div>
+      <h2 className="section-title">Recent decisions</h2>
+      <div className="stack">
+        {records.length === 0
+          ? <Empty big="🗂️" title="No activity yet" sub="Ask the assistant something to populate the trail." />
+          : records.map((r, i) => <AuditRow key={i} r={r} />)}
+      </div>
+    </>
+  );
+}
+
+function AuditRow({ r }) {
+  const row = { display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--surface)", marginBottom: 6 };
+  const main = { flex: 1, fontSize: 13 };
+  const sub = { fontSize: 12, color: "var(--text-muted)" };
+  if (r.kind === "fallback") {
+    const cls = r.blocked ? "badge-local" : "badge-cloud";
+    return <div style={row}><span className={"badge " + cls}>{r.blocked ? "🔒 fail-closed" : "⚠ cloud fallback"}</span><span style={main}>{r.node}{r.personal ? " · personal" : ""}</span><span style={sub}>{r.model || ""}</span></div>;
+  }
+  const cloud = r.decision === "cloud";
+  return <div style={row}><span className={"badge " + (cloud ? "badge-cloud" : "badge-local")}>{r.decision}</span><span style={main}>{r.tool || "(reasoning)"}</span><span style={sub}>privacy {r.privacy_score}</span></div>;
 }
 
 /* ---- Documents ----------------------------------------------------------- */
@@ -599,13 +654,13 @@ export function Proactive({ refresh, notify }) {
 /* ---- Settings ------------------------------------------------------------ */
 export function Settings() {
   const [cfg, setCfg] = useState(null);
-  const [form, setForm] = useState({ local_model: "", google_credentials_path: "", complexity_threshold: 0.6, groq_api_key: "", tavily_api_key: "", slack_bot_token: "" });
+  const [form, setForm] = useState({ local_model: "", google_credentials_path: "", complexity_threshold: 0.6, groq_api_key: "", tavily_api_key: "", slack_bot_token: "", allow_cloud_fallback: true });
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     getJSON("/api/config").then((c) => {
       setCfg(c);
-      setForm((f) => ({ ...f, local_model: c.local_model || "", google_credentials_path: c.google_credentials_path || "", complexity_threshold: c.complexity_threshold ?? 0.6 }));
+      setForm((f) => ({ ...f, local_model: c.local_model || "", google_credentials_path: c.google_credentials_path || "", complexity_threshold: c.complexity_threshold ?? 0.6, allow_cloud_fallback: c.allow_cloud_fallback ?? true }));
     }).catch(() => {});
   }, []);
 
@@ -618,6 +673,7 @@ export function Settings() {
     });
     const num = parseFloat(form.complexity_threshold);
     if (!Number.isNaN(num)) body.complexity_threshold = num;
+    body.allow_cloud_fallback = !!form.allow_cloud_fallback;
     setStatus("Saving…");
     try {
       const r = await postJSON("/api/config", body);
@@ -641,11 +697,217 @@ export function Settings() {
         <label>Slack bot token {cfg && hint(cfg.slack_bot_token_set)}<input className="input" type="password" value={form.slack_bot_token} onChange={upd("slack_bot_token")} placeholder="xoxb-..." /></label>
         <label>Google credentials path<input className="input" value={form.google_credentials_path} onChange={upd("google_credentials_path")} placeholder="./credentials.json" /></label>
       </div>
+      <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 16, fontSize: 13, lineHeight: 1.5 }}>
+        <input type="checkbox" style={{ marginTop: 3 }} checked={!!form.allow_cloud_fallback} onChange={(e) => setForm((f) => ({ ...f, allow_cloud_fallback: e.target.checked }))} />
+        <span><strong>Allow cloud fallback for personal work.</strong> When off, personal requests <em>fail closed</em> if the on-device model is unavailable — nothing personal goes to the cloud.</span>
+      </label>
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 16 }}>
         <button className="btn btn-primary" onClick={save}>Save settings</button>
         <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{status}</span>
       </div>
       <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "16px 0 0" }}>Keys are stored locally in your config file. Personal-data tasks always run on the local model; only low-sensitivity tasks may use the cloud model.</p>
+    </div>
+  );
+}
+
+/* ---- Evaluation (Stream 4) ----------------------------------------------- */
+const pct = (x) => (x * 100).toFixed(1) + "%";
+
+export function Evaluation({ refresh, notify }) {
+  const [report, setReport] = useState(undefined); // undefined=loading, null=none
+  const [privacy, setPrivacy] = useState(null);
+  const [running, setRunning] = useState(false);
+
+  const loadPrivacy = () => getJSON("/api/privacy/report").then(setPrivacy).catch(() => {});
+  useEffect(() => {
+    getJSON("/api/eval/report").then((d) => setReport(d.report)).catch(() => setReport(null));
+    loadPrivacy();
+  }, [refresh]);
+
+  async function runEval() {
+    setRunning(true);
+    try {
+      const d = await postJSON("/api/eval/run", {});
+      setReport(d.report);
+      loadPrivacy();
+      notify?.("Evaluation complete");
+    } catch {
+      notify?.("Eval run failed");
+    }
+    setRunning(false);
+  }
+
+  if (report === undefined) return <Empty big="📊" title="Loading evaluation…" sub="" />;
+
+  return (
+    <>
+      <div className="privacy-banner">{ChartIcon}<div><strong>Week-05 evaluation harness.</strong> Routing accuracy, latency, tokens, and a validated LLM-as-judge (TPR/TNR with 95% CIs) over a versioned golden set. Offline stub by default — no keys needed.</div></div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 16px", flexWrap: "wrap" }}>
+        <button className="btn btn-primary" onClick={runEval} disabled={running}>{running ? "Running…" : "Run evaluation"}</button>
+        {report && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>mode {report.mode} · judge {report.judge_backend} · n={report.n_cases} · {new Date(report.generated_at).toLocaleString()}</span>}
+      </div>
+      {!report
+        ? <Empty big="📊" title="No report yet" sub="Click “Run evaluation” to generate one (offline)." />
+        : <EvalReport r={report} privacy={privacy} />}
+    </>
+  );
+}
+
+function EvalReport({ r, privacy }) {
+  const m = r.metrics, ra = m.routing_accuracy, j = m.judge;
+  const kpis = [
+    { n: pct(ra.value), l: `Routing accuracy [${pct(ra.ci_low)}–${pct(ra.ci_high)}]`, alert: ra.label !== "PASS" },
+    { n: pct(j.tpr), l: "Judge TPR (recall)", alert: j.tpr < 0.8 },
+    { n: pct(j.tnr), l: "Judge TNR", alert: j.tnr < 0.8 },
+    { n: m.latency.mean_s + "s", l: "Mean latency" },
+  ];
+  return (
+    <>
+      <div className="kpi-row">{kpis.map((k, i) => <div key={i} className={"kpi" + (k.alert ? " alert" : "")}><div className="num">{k.n}</div><div className="lbl">{k.l}</div></div>)}</div>
+
+      <h2 className="section-title">Judge confusion matrix</h2>
+      <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, textAlign: "center" }}>
+        {[["TP", j.tp], ["TN", j.tn], ["FP", j.fp], ["FN", j.fn]].map(([k, v]) => (
+          <div key={k}><div style={{ fontSize: 22, fontWeight: 700 }}>{v}</div><div style={{ fontSize: 12, color: "var(--text-muted)" }}>{k}</div></div>
+        ))}
+      </div>
+
+      {privacy && (
+        <>
+          <h2 className="section-title">Privacy posture (Stream 3)</h2>
+          <div className="kpi-row">
+            <div className="kpi"><div className="num">{privacy.pct_local}%</div><div className="lbl">Routed LOCAL</div></div>
+            <div className="kpi"><div className="num">{privacy.leaks_prevented}</div><div className="lbl">Leaks prevented</div></div>
+            <div className={"kpi" + (privacy.personal_fallbacks > 0 ? " alert" : "")}><div className="num">{privacy.personal_fallbacks}</div><div className="lbl">Personal cloud fallbacks</div></div>
+          </div>
+        </>
+      )}
+
+      <h2 className="section-title">Silent failures ({r.silent_failures.length})</h2>
+      <div className="stack">
+        {r.silent_failures.length === 0
+          ? <Empty big="✅" title="No silent failures" sub="No fluent-but-wrong answers flagged." />
+          : r.silent_failures.map((sf, i) => (
+            <div className="card" key={i}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span className="badge badge-cloud">{sf.case_id}</span><span style={{ fontSize: 12, color: "var(--text-muted)" }}>confidence {sf.confidence}</span></div>
+              <div style={{ marginTop: 6, fontSize: 13 }}>{sf.reason}</div>
+              {sf.answer_preview ? <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>{sf.answer_preview}</div> : null}
+            </div>
+          ))}
+      </div>
+    </>
+  );
+}
+
+/* ---- Proactive runtime (Stream 2) ---------------------------------------- */
+export function Proactive({ refresh, notify }) {
+  const [briefing, setBriefing] = useState(null);
+  const [nudges, setNudges] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [running, setRunning] = useState("");
+
+  const loadNudges = () => getJSON("/api/nudges").then((d) => setNudges(d.nudges || [])).catch(() => {});
+  const loadBriefing = () => getJSON("/api/briefing").then((d) => setBriefing(d.briefing)).catch(() => {});
+  useEffect(() => {
+    loadBriefing();
+    getJSON("/api/nudges/jobs").then((d) => setJobs(d.jobs || [])).catch(() => {});
+    loadNudges();
+  }, [refresh]);
+
+  async function runJob(name) {
+    setRunning(name);
+    try {
+      const d = await postJSON(`/api/nudges/run/${encodeURIComponent(name)}`, {});
+      notify?.(d.surfaced ? `${name}: nudge posted` : `${name}: stayed silent`);
+      loadNudges();
+    } catch {
+      notify?.(`${name}: run failed`);
+    }
+    setRunning("");
+  }
+
+  async function runAll() {
+    setRunning("*");
+    for (const j of jobs) {
+      try { await postJSON(`/api/nudges/run/${encodeURIComponent(j.name)}`, {}); } catch { /* continue */ }
+    }
+    await loadNudges();
+    notify?.("Ran all jobs");
+    setRunning("");
+  }
+
+  async function dismiss(id) {
+    try { await postJSON(`/api/nudges/${id}/dismiss`, {}); setNudges((n) => n.filter((x) => x.id !== id)); } catch { /* ignore */ }
+  }
+
+  return (
+    <>
+      <div className="privacy-banner">{BellIcon}<div><strong>Proactive runtime.</strong> Scheduled Hermes skills derive signals on-device and post nudges here. The background scheduler is off by default — run a job manually below.</div></div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 16px" }}>
+        <button className="btn btn-primary" onClick={runAll} disabled={!!running}>{running === "*" ? "Running…" : "Run all jobs"}</button>
+        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{nudges.length} active nudge(s)</span>
+      </div>
+
+      {briefing && <BriefingCard b={briefing} />}
+
+      <h2 className="section-title">Nudges</h2>
+      <div className="stack">
+        {nudges.length === 0
+          ? <Empty big="🔔" title="No nudges yet" sub="Run a job below to generate one." />
+          : nudges.map((n) => (
+            <div className="card" key={n.id} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{n.message}</div>
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)" }}>
+                  <span className="badge badge-src">{n.skill || "skill"}</span>{n.job_name ? ` · ${n.job_name}` : ""}{n.generated_at ? " · " + new Date(n.generated_at * 1000).toLocaleString() : ""}
+                </div>
+              </div>
+              <button className="btn" onClick={() => dismiss(n.id)}>Dismiss</button>
+            </div>
+          ))}
+      </div>
+
+      <h2 className="section-title">Scheduled jobs</h2>
+      <div className="stack">
+        {jobs.map((j) => (
+          <div className="card" key={j.name} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <span className="badge badge-src">{j.skill}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{j.name}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{j.schedule}{j.quiet_hours_aware ? " · quiet-hours-aware" : ""}</div>
+            </div>
+            <button className="btn" onClick={() => runJob(j.name)} disabled={!!running}>{running === j.name ? "Running…" : "Run"}</button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function BriefingCard({ b }) {
+  const tl = b.task_load || {}, rd = b.readiness || {};
+  return (
+    <div className="card">
+      <h2 className="section-title" style={{ marginTop: 0 }}>Today's briefing</h2>
+      <div style={{ fontSize: 14, marginBottom: 10 }}>{b.headline}</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        <span className="chip">{tl.due_today ?? 0} due today</span>
+        <span className={"chip" + (tl.overdue ? " chip-demo" : "")}>{tl.overdue ?? 0} overdue</span>
+        {tl.heavy_day ? <span className="chip chip-demo">heavy day</span> : null}
+        {rd.recovery_status ? <span className="chip">recovery: {rd.recovery_status}</span> : null}
+        {rd.sleep_hours != null ? <span className="chip">sleep: {rd.sleep_hours}h</span> : null}
+      </div>
+      {(b.commitments_today || []).length > 0 && (
+        <>
+          <div className="day-label">Today</div>
+          {b.commitments_today.map((c, i) => (
+            <div className="tl" key={i} style={{ marginTop: 8 }}>
+              <div className="time">{c.at}</div>
+              <div className="body"><div className="t">{c.description}</div><div className="m"><SrcBadge s={c.source} /> {c.who && c.who !== "(self)" ? <span>· with {c.who}</span> : null}</div></div>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }

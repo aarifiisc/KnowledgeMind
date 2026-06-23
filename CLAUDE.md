@@ -43,13 +43,16 @@ extraction/            → spaCy NER + few-shot commitment extractor + timeparse
 connectors/            → Slack/Calendar/Gmail (BaseConnector) + Hermes signal sources (below)
 tools/rag.py           → ChromaDB RAG over local documents
 memory/memory_manager.py → per-session history (turns table)
+projmgmt/              → mounted sub-app at /projmgmt ("Project Advisor": SOW → KG + rules → chat)
 ```
 
 ### API endpoints (every `/api/*` is gated by `ACCESS_KEY` when set)
 `GET /api/status` · `POST /api/scan` · `GET /api/commitments` · `GET /api/conflicts` ·
 `POST /api/chat` · `GET|POST /api/documents` · `POST /api/rag/query` · `GET|POST /api/config` ·
 `GET /api/connectors` · `GET /api/briefing` · `GET /api/nudges` · `POST /api/nudges/{id}/dismiss` ·
-`GET /api/runtime/jobs` · `POST /api/runtime/tick`. The static SPA is served at `/` (not gated, so the login screen can load).
+`GET /api/runtime/jobs` · `POST /api/runtime/tick` · `GET /api/audit` · `GET /api/privacy/report` ·
+`GET /api/eval/{report,traces,metrics}`. The static SPA is served at `/` (not gated, so the login
+screen can load); the **projmgmt** sub-app is mounted at `/projmgmt` (gated too — see below).
 
 ### Proactive runtime (`runtime/`)
 Loader parses `hermes_jobs/*.json` + `hermes_skills/*.md`; the runner fires due jobs (hand-rolled
@@ -61,7 +64,7 @@ instead of delivering. The background loop is **off by default** (`proactive_run
 surfaces `routing_log`/`token_summary`); Contract 2 is unchanged.
 
 ### Access-key auth (api/main.py)
-Set `ACCESS_KEY` to lock the app: every `/api/*` request must send `X-Access-Key: <ACCESS_KEY>` (else 401). Unset → open (local dev). The React `Login` screen captures the key (localStorage) and attaches it to every request.
+Set `ACCESS_KEY` to lock the app: every `/api/*` **and `/projmgmt`** request must carry the key — as an `X-Access-Key` header (KM's fetch calls) or a `km_access` cookie (the projmgmt iframe, which can't set headers; mirrored from localStorage at login). Unset → open (local dev). The static SPA at `/` stays open so the login screen can load.
 
 ### Privacy routing (routing/router.py) — the most critical invariant
 - `ALWAYS_LOCAL_TOOLS` is never routed to cloud. Do NOT add a force_cloud flag or remove a tool without approval.
@@ -76,6 +79,9 @@ Every tool: `dict -> {"success": bool, "formatted": str, ...}`, never raises (`d
 
 ### Hermes connectors (signal sources)
 `connectors/{strava,spotify,todoist,apple_health}.py` derive **signals** (fitness/sleep/tasks/mood) — not messages or commitments — so they are wired as **agent tools** (`strava`, `apple_health`, `todoist`, `spotify` in `agent/tools.py`, via `hermes_tools/`), NOT into the monitor. Each derives locally, records a snapshot to `kg/connector_store.py` (a separate `connectors.db`), and falls back to mock data without keys. `GET /api/connectors` surfaces them; the React **Connectors** view renders them. `mcp_serve.py` optionally exposes the tools over MCP as a separate process (`python mcp_serve.py`). `hermes_skills/*.md` + `hermes_jobs/*.json` are design specs for a proactive cron runtime that is **not yet implemented** (no loader/runner).
+
+### Project Advisor (projmgmt sub-app)
+`projmgmt/` is a self-contained FastAPI app (own `backend/`, vanilla-JS frontend, `pm_config`, tests) **mounted at `/projmgmt`** by `api/main.py` (ASGI sub-app; the import is wrapped in try/except so a missing key just disables it without breaking KM). It ingests a Statement of Work → builds a project KG + rules → a chat advisor that rates alignment and flags deviations. It uses the **shared `GROQ_API_KEY`** (resolved in `projmgmt/backend/pm_config.py`), is surfaced in the React UI as the **Project Advisor** iframe view, and sits behind the same access-key lock (via the cookie). Its `data/` persistence is separate from KM's KG.
 
 ### Knowledge graph
 Tables: `persons`, `commitments`, `conflicts`, `turns`, `rag_documents`. Commitment types HARD/SOFT/TENTATIVE. Conflict detection is **person-agnostic** (the user's whole timeline) and skips TENTATIVE. Open the DB via `get_db_connection(cfg.db_path)` (idempotent `init_db`).

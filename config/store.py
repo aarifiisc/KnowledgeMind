@@ -65,6 +65,10 @@ class AppConfig:
     complexity_threshold: float = 0.6
     max_local_retries: int = 2
 
+    # Privacy: when the local model is unavailable, may *personal* work fall back
+    # to the cloud? False = fail closed (personal data never leaves the device).
+    allow_cloud_fallback: bool = True
+
     # Monitor
     monitor_interval_minutes: int = 15
 

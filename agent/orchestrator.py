@@ -37,6 +37,7 @@ from agent.prompts import (
 from agent.token_tracker import TokenTracker, TokenEvent
 from config.store import get_config
 from routing.router import router, RoutingDecision
+from guardrails import audit
 from memory.memory_manager import memory_manager
 
 MAX_REACT_ITERATIONS = int(os.getenv("MAX_REACT_ITERATIONS", "5"))
@@ -128,6 +129,13 @@ def _call_groq_fast(
     return response.choices[0].message.content
 
 
+_LOCAL_UNAVAILABLE_MSG = (
+    "I can't process this locally right now (the on-device model is unavailable), "
+    "and privacy mode is set to keep your personal data on this device -- so I won't "
+    "send it to the cloud. Start the local model (Ollama), or allow cloud fallback in Settings."
+)
+
+
 def _call_ollama(
     messages: list[dict],
     system: str,
@@ -135,7 +143,12 @@ def _call_ollama(
     node: str,
     agency_level: str,
     max_tokens: int = 512,
+    allow_fallback: bool = True,
+    personal: bool = False,
 ) -> str:
+    """Run a step on the LOCAL model. When Ollama is unavailable, fall back to the
+    cloud fast tier ONLY if allow_fallback is set; otherwise fail closed so personal
+    data never leaves the device. Both outcomes are recorded to the privacy audit."""
     cfg = get_config()
 
     try:
@@ -161,7 +174,12 @@ def _call_ollama(
         return response.message.content
 
     except Exception as e:
-        # Fallback to Groq fast tier if Ollama unreachable
+        if not allow_fallback:
+            # Fail closed: personal work must not reach the cloud (privacy mode).
+            audit.record_fallback(node, blocked=True, personal=personal, model=cfg.local_model)
+            print(f"[Orchestrator] Ollama unavailable ({e}); fail-closed -- not sending personal data to the cloud.")
+            return _LOCAL_UNAVAILABLE_MSG
+        audit.record_fallback(node, blocked=False, personal=personal, model=cfg.cloud_model_fast)
         print(f"[Orchestrator] Ollama unavailable ({e}), falling back to Groq fast tier")
         return _call_groq_fast(messages, system, tracker, f"{node}_fallback", agency_level, max_tokens)
 
@@ -193,6 +211,14 @@ def _extract_json(text: str) -> Optional[dict]:
 def _dispatch_tool(tool_name: str, parameters: dict) -> dict:
     from agent.tools import dispatch_tool
     return dispatch_tool(tool_name, parameters)
+
+
+def _route(task_text: str, tool_name: Optional[str] = None):
+    """router.route() + audit the decision. Keeps routing/router.py pure -- the
+    benchmark calls router.route directly and must not write to the audit log."""
+    result = router.route(task_text, tool_name)
+    audit.record_route(result)
+    return result
 
 
 def _heuristic_params(tool_name: str, step_input: str) -> dict:
@@ -303,14 +329,15 @@ def _run_l1(
     kg_context = _inject_kg_context(user_input)
 
     # ── Decision call: answer directly or pick one tool ──────────────────────
-    decide_routing = router.route(user_input, tool_name=None)
+    decide_routing = _route(user_input, tool_name=None)
     decide_system = (
         f"{L1_AGENT_PROMPT}\n\n"
         f"Knowledge-graph context (the user's commitments):\n{kg_context}"
     )
     messages = history + [{"role": "user", "content": user_input}]
     if decide_routing.decision == RoutingDecision.LOCAL:
-        decision_raw = _call_ollama(messages, decide_system, tracker, "single_call", agency_level)
+        decision_raw = _call_ollama(messages, decide_system, tracker, "single_call", agency_level,
+                                    allow_fallback=get_config().allow_cloud_fallback, personal=True)
     else:
         decision_raw = _call_groq(messages, decide_system, tracker, "single_call", agency_level, max_tokens=1000)
 
@@ -332,7 +359,7 @@ def _run_l1(
     # ── One tool call, then synthesise ───────────────────────────────────────
     tool_name = parsed.get("tool", "")
     tool_input = parsed.get("input", user_input) or user_input
-    tool_routing = router.route(tool_input, tool_name=tool_name)
+    tool_routing = _route(tool_input, tool_name=tool_name)
     routing_log.append({
         "step_id": 1, "tool": tool_name,
         "decision": tool_routing.decision.value,
@@ -354,7 +381,8 @@ def _run_l1(
     # results never reach the cloud; CLOUD-safe tools may synthesise on Groq.
     if tool_routing.decision == RoutingDecision.LOCAL:
         answer = _call_ollama([{"role": "user", "content": synth_input}],
-                              DIRECT_ANSWER_PROMPT, tracker, "single_call", agency_level)
+                              DIRECT_ANSWER_PROMPT, tracker, "single_call", agency_level,
+                              allow_fallback=get_config().allow_cloud_fallback, personal=True)
     else:
         answer = _call_groq([{"role": "user", "content": synth_input}],
                             DIRECT_ANSWER_PROMPT, tracker, "single_call", agency_level, max_tokens=1000)
@@ -433,7 +461,7 @@ needs no personal data or tools, return an empty "steps" list."""
                 step_input = f"{step_input}\n\nContext:\n{dep_ctx}"
 
         # Route
-        routing_result = router.route(step_input, tool_name=tool_name)
+        routing_result = _route(step_input, tool_name=tool_name)
         routing_log.append({
             "step_id": step_id,
             "tool": tool_name,
@@ -542,7 +570,7 @@ def _run_l3(
         tool_input = thought_parsed.get("input", "")
 
         # ── Route ─────────────────────────────────────────────────────────────
-        routing_result = router.route(tool_input, tool_name=tool_name)
+        routing_result = _route(tool_input, tool_name=tool_name)
         routing_log.append({
             "step_id": iteration,
             "tool": tool_name,
@@ -649,6 +677,7 @@ class HybridMindAgent:
         """
         start = time.time()
         self.tracker.mark_call_start()
+        audit.begin_turn()
         memory_manager.add_user_message(self.session_id, user_input)
 
         history = memory_manager.get_context(self.session_id)
@@ -694,6 +723,7 @@ class HybridMindAgent:
             "agency_level":  agency_level.value if hasattr(agency_level, "value") else str(agency_level),
             "elapsed":       elapsed,
             "session_id":    self.session_id,
+            "privacy":       audit.turn_summary(),
         }
 
     def add_document(self, file_path: str) -> dict:

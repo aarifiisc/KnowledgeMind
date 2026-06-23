@@ -113,32 +113,57 @@ async def lifespan(_app: FastAPI):
             pass
     _run_scan()  # seed so the dashboard has data immediately
 
-    # Proactive runtime: the nudge outbox lives in the demo DB, so it
-    # is already wiped by the unlink above. Start the cron loop only when enabled
-    # (off by default — see AppConfig.proactive_runtime_enabled).
-    runtime = _get_runtime()
+    # Archive stale commitments on startup — keeps conflict detection clean.
+    try:
+        from kg.janitor import run_janitor_for_config
+        jr = run_janitor_for_config(apply=True)
+        if jr.total_archived or jr.deleted_turns:
+            print(f"[janitor] {jr.summary()}")
+    except Exception as e:
+        print(f"[janitor] startup run skipped: {e}")
+    # Proactive scheduler is OFF by default: on the no-Ollama Space every skill
+    # would fall back to Groq and could exhaust the free-tier daily limit
+    # unattended. Enable via AppConfig.proactive_runtime_enabled; POST
+    # /api/nudges/run/{job} always fires a job manually regardless.
+    scheduler_started = False
     if cfg.proactive_runtime_enabled:
-        await runtime.start()
+        try:
+            from proactive.scheduler import start as _sched_start
+            _sched_start()
+            scheduler_started = True
+        except Exception as e:
+            print(f"[scheduler] startup failed: {e}")
     try:
         yield
     finally:
-        await runtime.stop()
+        if scheduler_started:
+            try:
+                from proactive.scheduler import stop as _sched_stop
+                _sched_stop()
+            except Exception:
+                pass
 
 
 app = FastAPI(title="KnowledgeMind", lifespan=lifespan)
 
 # --- access-key auth ("static auth") ----------------------------------------
-# Set ACCESS_KEY in the environment to lock the app: every /api/* request must
-# then carry a matching X-Access-Key header (else 401). When ACCESS_KEY is unset
-# (local dev / tests) the API is open. The key is never stored in the repo/build.
+# Set ACCESS_KEY in the environment to lock the app: every /api/* AND /projmgmt
+# request must then carry the key -- as an X-Access-Key header (KM's fetch calls)
+# or a km_access cookie (the projmgmt iframe + its own JS, which can't set custom
+# headers). When ACCESS_KEY is unset (local dev / tests) the app is open. The key
+# is never stored in the repo/build.
 ACCESS_KEY = os.environ.get("ACCESS_KEY", "").strip()
+
+
+def _is_gated(path: str) -> bool:
+    """Both the KM API and the mounted projmgmt sub-app sit behind the lock."""
+    return path.startswith("/api/") or path == "/projmgmt" or path.startswith("/projmgmt/")
 
 
 @app.middleware("http")
 async def access_key_guard(request: Request, call_next):
-    path = request.url.path
-    if ACCESS_KEY and path.startswith("/api/") and request.method != "OPTIONS":
-        provided = request.headers.get("X-Access-Key", "")
+    if ACCESS_KEY and _is_gated(request.url.path) and request.method != "OPTIONS":
+        provided = request.headers.get("X-Access-Key", "") or request.cookies.get("km_access", "")
         if not hmac.compare_digest(provided, ACCESS_KEY):
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
     return await call_next(request)
@@ -369,6 +394,7 @@ def get_config_api() -> dict:
         "groq_api_key_set": bool(cfg.groq_api_key),
         "tavily_api_key_set": bool(cfg.tavily_api_key),
         "slack_bot_token_set": bool(cfg.slack_bot_token),
+        "allow_cloud_fallback": cfg.allow_cloud_fallback,
     }
 
 
@@ -379,6 +405,7 @@ class ConfigUpdate(BaseModel):
     slack_bot_token: Optional[str] = None
     google_credentials_path: Optional[str] = None
     complexity_threshold: Optional[float] = None
+    allow_cloud_fallback: Optional[bool] = None
 
 
 @app.post("/api/config")
@@ -394,8 +421,80 @@ def set_config_api(upd: ConfigUpdate) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Nudges (Hermes proactive runtime)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/nudges")
+def get_nudges(limit: int = 20, undismissed: bool = True) -> dict:
+    """Return recent proactive nudges from the outbox."""
+    from proactive.outbox import list_nudges
+    try:
+        conn = get_db_connection(get_config().db_path)
+        nudges = list_nudges(conn, limit=limit, undismissed_only=undismissed)
+        conn.close()
+        return {"nudges": nudges}
+    except Exception as e:
+        return JSONResponse({"detail": str(e)}, status_code=500)
+
+
+@app.post("/api/nudges/{nudge_id}/dismiss")
+def dismiss_nudge(nudge_id: int) -> dict:
+    """Mark a nudge as dismissed."""
+    from proactive.outbox import dismiss_nudge as _dismiss
+    try:
+        conn = get_db_connection(get_config().db_path)
+        found = _dismiss(conn, nudge_id)
+        conn.close()
+        return {"ok": found, "id": nudge_id}
+    except Exception as e:
+        return JSONResponse({"detail": str(e)}, status_code=500)
+
+
+@app.post("/api/nudges/run/{job_name}")
+def run_nudge_job(job_name: str) -> dict:
+    """Manually trigger a Hermes job by name."""
+    from proactive.loader import load_jobs
+    from proactive.runner import run_job
+    jobs = {j["name"]: j for j in load_jobs()}
+    if job_name not in jobs:
+        return JSONResponse(
+            {"detail": f"Unknown job '{job_name}'. Available: {list(jobs)}"},
+            status_code=404,
+        )
+    try:
+        nudge = run_job(jobs[job_name])
+        if nudge is None:
+            return {"surfaced": False, "message": "skill decided to stay silent"}
+        return {"surfaced": True, "nudge": {k: v for k, v in nudge.items() if k != "signals"}}
+    except Exception as e:
+        return JSONResponse({"detail": str(e)}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
 # Connectors (Hermes signal tools) -- fitness / health / tasks / music
 # ---------------------------------------------------------------------------
+
+@app.post("/api/kg/janitor")
+def kg_janitor(dry_run: bool = False) -> dict:
+    """Archive stale commitments and prune old turns.
+
+    Pass ?dry_run=true to see counts without writing.
+    """
+    from kg.janitor import run_janitor_for_config
+    try:
+        result = run_janitor_for_config(apply=not dry_run)
+        return {
+            "dry_run": dry_run,
+            "archived_tentative": result.archived_tentative,
+            "archived_soft": result.archived_soft,
+            "archived_hard": result.archived_hard,
+            "archived_conflicts": result.archived_conflicts,
+            "deleted_turns": result.deleted_turns,
+            "summary": result.summary(),
+        }
+    except Exception as e:
+        return JSONResponse({"detail": str(e)}, status_code=500)
+
 
 @app.get("/api/connectors")
 def connectors() -> dict:
@@ -410,77 +509,44 @@ def connectors() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Proactive runtime — briefing, nudge outbox, job catalog, tick
+# Privacy audit (Stream 3) — routing/fallback trail + posture report
 # ---------------------------------------------------------------------------
 
-_runtime = None
+@app.get("/api/audit")
+def audit_log(limit: int = 100) -> dict:
+    """Recent routing/privacy decisions (newest last)."""
+    from guardrails import audit
+    return {"records": audit.read_recent(limit)}
 
 
-def _runtime_agent_run(prompt: str, level: str) -> dict:
-    """Route skills through the real agent when a key is set, else the offline
-    demo runner — chosen per-call so adding a key later takes effect live."""
-    from runtime.runner import default_agent_run, demo_agent_run
-    cfg = get_config()
-    runner = default_agent_run if cfg.groq_api_key else demo_agent_run
-    return runner(prompt, level)
+@app.get("/api/privacy/report")
+def privacy_report() -> dict:
+    """Aggregate privacy posture: %local, fallbacks to cloud, leaks prevented."""
+    from guardrails import audit
+    return audit.report()
 
 
-def _get_runtime():
-    global _runtime
-    if _runtime is None:
-        from runtime.runner import ProactiveRuntime
-        cfg = get_config()
-        _runtime = ProactiveRuntime(
-            agent_run=_runtime_agent_run,
-            db_path=cfg.db_path,
-            tick_seconds=cfg.proactive_tick_seconds,
-        )
-    return _runtime
-
+# ---------------------------------------------------------------------------
+# Daily briefing + proactive job catalog (proactive/ is the canonical runtime;
+# nudge list/dismiss/run live above under "Nudges")
+# ---------------------------------------------------------------------------
 
 @app.get("/api/briefing")
 def briefing() -> dict:
-    """Today's digest: commitments + conflicts + task load + readiness."""
-    from runtime.briefing import compose_briefing
-    cfg = get_config()
-    return {"briefing": compose_briefing(db_path=cfg.db_path)}
+    """Today's digest: commitments + conflicts + task load + readiness (no LLM)."""
+    from proactive.briefing import compose_briefing
+    return {"briefing": compose_briefing(db_path=get_config().db_path)}
 
 
-@app.get("/api/nudges")
-def list_nudges_api(include_dismissed: bool = False) -> dict:
-    """Proactive nudge feed (newest first). Suppressed (quiet-hours) nudges are
-    included but flagged so the UI can hold delivery."""
-    from runtime import outbox
-    cfg = get_config()
-    nudges = outbox.list_nudges(include_dismissed=include_dismissed, db_path=cfg.db_path)
-    return {
-        "nudges": nudges,
-        "active_count": outbox.count_active(db_path=cfg.db_path),
-    }
-
-
-@app.post("/api/nudges/{nudge_id}/dismiss")
-def dismiss_nudge_api(nudge_id: int) -> dict:
-    from runtime import outbox
-    cfg = get_config()
-    dismissed = outbox.dismiss_nudge(nudge_id, db_path=cfg.db_path)
-    return {"ok": dismissed, "id": nudge_id, "dismissed": dismissed}
-
-
-@app.get("/api/runtime/jobs")
-def runtime_jobs() -> dict:
-    """Scheduled-job catalog for the UI: schedule, agency level, last run."""
-    rt = _get_runtime()
-    return {"jobs": rt.catalog(), "errors": rt.load.errors}
-
-
-@app.post("/api/runtime/tick")
-def runtime_tick(force: bool = False) -> dict:
-    """Manually advance the scheduler. force=true runs every job regardless of
-    schedule (handy for the demo); otherwise fires only jobs due right now."""
-    rt = _get_runtime()
-    fired = rt.run_due_jobs(force=force)
-    return {"fired": fired, "count": len(fired)}
+@app.get("/api/nudges/jobs")
+def nudge_jobs() -> dict:
+    """Scheduled Hermes jobs the UI lists + triggers via POST /api/nudges/run/{name}."""
+    from proactive.loader import load_jobs
+    jobs = [
+        {k: j.get(k) for k in ("name", "schedule", "skill", "platform", "quiet_hours_aware")}
+        for j in load_jobs()
+    ]
+    return {"jobs": jobs}
 
 
 # ---------------------------------------------------------------------------
@@ -538,6 +604,16 @@ def eval_metrics() -> dict:
         },
         "n_traces": len(traces),
     }
+
+
+@app.post("/api/eval/run")
+def eval_run(live: bool = False) -> dict:
+    """Run the eval harness and return the fresh report. Defaults to the offline
+    stub (no keys, no Groq); pass ?live=true to run the real agent + Groq judge."""
+    from eval.runner import run_eval
+    report = run_eval(live=live, judge_backend="groq" if live else "stub")
+    report.pop("_report_path", None)
+    return {"report": report}
 
 
 # ---------------------------------------------------------------------------
