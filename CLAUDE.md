@@ -6,6 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 KnowledgeMind — a privacy-aware personal AI agent. A **FastAPI** backend (`api/main.py`) serves a **React** front-end (`frontend/`) and wraps the engine: a SQLite + NetworkX personal knowledge graph, a LangGraph background monitor, a privacy router (LOCAL vs CLOUD), an L1/L2/L3 ReAct agent, and a set of connectors. Runs CPU-only and degrades to mock data when no API keys are set.
 
 ## Commands
+> Paths below use the Unix venv layout (`.venv/bin/...`, CI + Linux/macOS). On **Windows** the
+> interpreter is `.venv\Scripts\python.exe` (and `.venv\Scripts\pip.exe`) — substitute accordingly.
+
 ```bash
 # Python deps (use the project venv)
 .venv/bin/pip install -r requirements.txt

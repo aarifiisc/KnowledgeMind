@@ -96,10 +96,11 @@ The UI shows every routing decision live — LOCAL (green) / CLOUD (yellow) — 
 | NER / Extraction | spaCy + few-shot LLM prompting |
 | Embeddings | `all-MiniLM-L6-v2` (sentence-transformers, 80 MB, CPU) |
 | Orchestration | [LangGraph](https://langchain-ai.github.io/langgraph/) |
-| Connectors | Slack SDK · Google Calendar API · CalDAV |
+| Connectors | Slack SDK · Google Calendar API · Gmail · Hermes signal sources (Strava/Spotify/Todoist/Apple Health) |
 | Web Search | Tavily (free tier) + DuckDuckGo fallback |
-| UI | Gradio |
-| Language | Python 3.11+ |
+| Backend | FastAPI + Uvicorn (`api/main.py`), served on `:8000` |
+| UI | React + Vite SPA (`frontend/`), built to `frontend/dist` and served by FastAPI |
+| Language | Python 3.11+ · Node 20+ (front-end build) |
 
 ---
 
@@ -165,20 +166,35 @@ GOOGLE_CREDENTIALS_PATH=./credentials.json
 
 If you skip this, the system uses mock calendar data for the demo.
 
-### 5. Run
+### 5. Build the front-end
 
 ```bash
-# Interactive chat + Gradio UI
-python main.py
-
-# Background monitor loop only (watches channels, fires alerts)
-python monitor.py
-
-# Demo mode — loads scripted dataset, runs all 6 demo scenarios
-python demo.py
+cd frontend && npm install && npm run build && cd ..
 ```
 
-Open `http://localhost:7860` for the UI.
+### 6. Run
+
+```bash
+# Entry point: runs uvicorn api.main:app on :8000 and opens the browser
+python launcher.py
+```
+
+Open `http://127.0.0.1:8000` for the UI (log in with `ACCESS_KEY` if it is set).
+
+**Dev with hot reload** (two terminals):
+
+```bash
+uvicorn api.main:app --reload      # backend on :8000
+cd frontend && npm run dev          # Vite on :5173 (proxies /api → :8000)
+```
+
+**Offline checks** (no API keys needed):
+
+```bash
+python benchmark.py --mode static   # routing/privacy contract (target 100%)
+python demo_conflicts.py            # end-to-end conflict demo
+python -m eval.runner               # agent-quality eval (stub agent + stub judge)
+```
 
 ---
 
@@ -186,41 +202,35 @@ Open `http://localhost:7860` for the UI.
 
 ```
 knowledgemind/
-├── main.py                  # Entry point — chat + monitor loop
-├── monitor.py               # Background FSM monitor (standalone)
-├── demo.py                  # Scripted demo runner
+├── launcher.py              # Entry point — runs uvicorn api.main:app on :8000, opens browser
 ├── requirements.txt
 ├── .env.example
 │
-├── kg/
-│   ├── schema.py            # SQLite schema: Person, Commitment, TimeSlot
-│   ├── graph.py             # NetworkX graph builder + conflict detection
-│   └── queries.py           # query_kg, find_free_slots, conflict_edges
+├── api/main.py              # FastAPI: access-key auth + CORS + endpoints + serves frontend/dist
+├── frontend/                # React (Vite) SPA — App.jsx, views.jsx, Login.jsx, api.js
 │
-├── extraction/
-│   ├── ner.py               # spaCy NER pipeline
-│   ├── commitment.py        # Few-shot LLM soft commitment extractor
-│   └── prompts.py           # Extraction prompt templates
-│
-├── monitor/
-│   └── fsm.py               # LangGraph FSM: IDLE→POLL→EXTRACT→UPDATE→CHECK→ALERT
-│
-├── routing/
-│   └── router.py            # Privacy + complexity classifier → LOCAL/CLOUD
-│
+├── routing/router.py        # Privacy + complexity classifier → LOCAL (Ollama) / CLOUD (Groq)
 ├── agent/
-│   ├── orchestrator.py      # ReAct planner (LangGraph)
-│   ├── tools.py             # query_kg, web_search, calendar, find_free_slots
+│   ├── orchestrator.py      # HybridMindAgent — 3 agency levels (L1/L2/L3)
+│   ├── tools.py             # Tool registry (dispatch_tool); every tool returns {success, formatted}
 │   └── prompts.py           # Planner + executor system prompts
 │
-├── connectors/
-│   ├── slack.py             # Slack SDK read connector
-│   ├── calendar.py          # Google Calendar API
-│   └── mock.py              # Mock data for demo / offline mode
+├── monitor/fsm.py           # LangGraph FSM: POLL → EXTRACT → UPDATE → CHECK → ALERT
+├── proactive/               # Jobs/skills loader + cron scheduler + runner + briefing + nudge outbox
 │
-└── ui/
-    └── app.py               # Gradio UI: chat + routing log + KG visualisation
+├── kg/                      # SQLite + NetworkX KG; person-agnostic conflict detection; janitor.py
+├── extraction/              # spaCy NER + few-shot commitment extractor + timeparse.py
+├── connectors/              # Slack/Calendar/Gmail (BaseConnector) + Hermes signal sources
+├── hermes_tools/            # Strava/Spotify/Todoist/Apple Health wired as agent tools
+├── tools/rag.py             # ChromaDB RAG over local documents
+├── memory/memory_manager.py # Per-session history (turns table)
+├── config/store.py          # Single source of truth for config (env > config.json > default)
+├── eval/                    # Agent-quality eval harness: runner + judge + metrics + tracer
+│
+└── projmgmt/                # Standalone "Project Advisor" sub-app, mounted at /projmgmt
 ```
+
+> See `CLAUDE.md` for the authoritative architecture reference, API endpoint list, and the privacy-routing invariants.
 
 ---
 
@@ -284,10 +294,11 @@ Privacy always wins. A high-complexity task involving personal data stays LOCAL 
 
 ## Roadmap
 
+- [x] RAG over local documents (notes, PDFs) as an additional source — `tools/rag.py` (ChromaDB)
+- [x] Gmail read connector — `connectors/gmail.py` (send is blocked; requires confirmed UI action)
+- [x] Hermes signal connectors (Strava, Spotify, Todoist, Apple Health) wired as agent tools
 - [ ] Embedding-based entity deduplication across channels
-- [ ] RAG over local documents (notes, PDFs) as an additional KG source
 - [ ] WhatsApp connector via official Business API
-- [ ] Gmail read connector
 - [ ] Quantitative benchmark suite (30 tasks, 5 categories)
 - [ ] Mobile-first UI (React Native or Flutter)
 - [ ] On-device fine-tuning of commitment extractor on personal data
