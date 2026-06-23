@@ -4,7 +4,7 @@ hermes_tools/todoist_tool.py
 Todoist task tool — exposed as MCP tools `todoist_summary` and `todoist_tasks`.
 
 Full task titles and descriptions are returned because this tool is processed
-only by the local Hermes model (nous-hermes3 via Ollama) — never a cloud model.
+only by the LOCAL model (via Ollama) — never a cloud model.
 Privacy floor: 0.90 (ALWAYS_LOCAL).
 """
 

@@ -1,92 +1,83 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository.
+
+## What this is
+KnowledgeMind — a privacy-aware personal AI agent. A **FastAPI** backend (`api/main.py`) serves a **React** front-end (`frontend/`) and wraps the engine: a SQLite + NetworkX personal knowledge graph, a LangGraph background monitor, a privacy router (LOCAL vs CLOUD), an L1/L2/L3 ReAct agent, and a set of connectors. Runs CPU-only and degrades to mock data when no API keys are set.
 
 ## Commands
-
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+# Python deps (use the project venv)
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m spacy download en_core_web_sm
 
-# Run the application (handles setup vs main UI automatically)
-python launcher.py
-# UI available at http://localhost:7860
+# Build the React front-end (FastAPI serves frontend/dist)
+cd frontend && npm install && npm run build && cd ..
 
-# Benchmark suite
-python benchmark.py                          # static routing check (offline, no LLM)
-python benchmark.py --mode ablation          # compare local/hybrid/cloud routing strategies
-python benchmark.py --mode live --level L2 --limit 5 -v  # live agent run (needs Ollama + Groq)
+# Run the app  → http://127.0.0.1:8000  (login with ACCESS_KEY if it is set)
+.venv/bin/python launcher.py
 
-# Per-module smoke tests (no external services required for most)
-python kg/schema.py
-python routing/router.py
-python monitor/fsm.py
-python agent/tools.py
+# Dev with hot reload (two terminals)
+.venv/bin/uvicorn api.main:app --reload      # backend on :8000
+cd frontend && npm run dev                    # Vite on :5173 (proxies /api → :8000)
+
+# Tests
+.venv/bin/python benchmark.py --mode static   # offline routing/privacy contract (target 100%)
+.venv/bin/python demo_conflicts.py            # end-to-end conflict demo (offline)
+.venv/bin/python -m kg.graph                  # per-module smoke test (each module has one)
 ```
 
 ## Architecture
-
 ```
-launcher.py               → entry point; routes to ui/setup.py (first run) or ui/app.py (main UI)
-config/store.py           → AppConfig singleton; priority: env var > config.json > default
-routing/router.py         → privacy + complexity classifier → LOCAL (Ollama) or CLOUD (Groq)
-agent/orchestrator.py     → HybridMindAgent with 3 agency levels (L1/L2/L3)
-agent/tools.py            → tool registry; all tools return {success, formatted}, never raise
-monitor/fsm.py            → LangGraph FSM: POLL → EXTRACT → UPDATE → CHECK → ALERT
-kg/schema.py              → SQLite schema; init_db() is idempotent; used by all KG modules
-kg/graph.py, queries.py   → NetworkX graph + conflict detection + KG queries
-extraction/               → spaCy NER (ner.py) + few-shot LLM soft commitment extractor (commitment.py)
-connectors/               → Slack, Google Calendar, Gmail all implement BaseConnector; mock.py is the fallback
-memory/memory_manager.py  → per-session conversation history stored in SQLite (turns table)
-tools/rag.py              → ChromaDB-backed RAG for local documents
+launcher.py            → entry point; runs uvicorn api.main:app on :8000, opens the browser
+api/main.py            → FastAPI: access-key auth + CORS + endpoints + serves frontend/dist
+frontend/              → React (Vite) SPA: App.jsx, views.jsx, Login.jsx, api.js
+routing/router.py      → privacy + complexity classifier → LOCAL (Ollama) or CLOUD (Groq)
+agent/orchestrator.py  → HybridMindAgent, 3 agency levels (L1/L2/L3)
+agent/tools.py         → tool registry (dispatch_tool); every tool returns {success, formatted}
+monitor/fsm.py         → LangGraph FSM: POLL → EXTRACT → UPDATE → CHECK → ALERT
+kg/                    → SQLite + NetworkX KG; person-agnostic conflict detection
+extraction/            → spaCy NER + few-shot commitment extractor + timeparse.py resolver
+connectors/            → Slack/Calendar/Gmail (BaseConnector) + Hermes signal sources (below)
+tools/rag.py           → ChromaDB RAG over local documents
+memory/memory_manager.py → per-session history (turns table)
 ```
 
-### Config storage (platform-aware)
-- Windows: `%APPDATA%\KnowledgeMind\config.json`
-- Linux: `~/.config/KnowledgeMind/config.json`
-- DB, alerts, chroma dir are co-located. Use `get_config()` for paths; never hardcode them.
-- `get_config()` returns a singleton. Call `reload_config()` after saving new config from the UI.
+### API endpoints (every `/api/*` is gated by `ACCESS_KEY` when set)
+`GET /api/status` · `POST /api/scan` · `GET /api/commitments` · `GET /api/conflicts` ·
+`POST /api/chat` · `GET|POST /api/documents` · `POST /api/rag/query` · `GET|POST /api/config` ·
+`GET /api/connectors`. The static SPA is served at `/` (not gated, so the login screen can load).
+
+### Access-key auth (api/main.py)
+Set `ACCESS_KEY` to lock the app: every `/api/*` request must send `X-Access-Key: <ACCESS_KEY>` (else 401). Unset → open (local dev). The React `Login` screen captures the key (localStorage) and attaches it to every request.
+
+### Privacy routing (routing/router.py) — the most critical invariant
+- `ALWAYS_LOCAL_TOOLS` is never routed to cloud. Do NOT add a force_cloud flag or remove a tool without approval.
+- Privacy ≥ 0.65 → LOCAL. Low privacy + high complexity → CLOUD. Privacy always wins.
+- `TOOL_PRIVACY_FLOORS` pins per-tool minimum privacy (KG/calendar/gmail ≥ 0.90; Hermes signal tools 0.90–0.98).
 
 ### Agency levels (agent/orchestrator.py)
-- **L1** — single LLM call + one optional tool + synthesis
-- **L2** — Groq plans steps → local LLM dispatches tools → Groq critiques (default)
-- **L3** — ReAct loop (thought → action → observe) with automatic replan on critique failure
-
-### Privacy routing (routing/router.py)
-The privacy contract is the most critical invariant in the codebase:
-- `ALWAYS_LOCAL_TOOLS` is a frozenset that is **never routed to cloud**, regardless of scores. Do not add an `override` or `force_cloud` flag and do not remove a tool from this set without explicit approval.
-- Privacy score ≥ 0.65 → LOCAL (always). Complexity + low privacy → CLOUD.
-- Privacy always wins: personal data tasks stay LOCAL even when complexity is high.
-- `TOOL_PRIVACY_FLOORS` sets minimum privacy scores per tool (floors are enforced even if task text scores lower).
+**L1** one call + one optional tool + synthesis · **L2** Groq plan → local dispatch → Groq critique (default) · **L3** ReAct loop with replan.
 
 ### Tool contract (agent/tools.py)
-- Every tool takes `dict[str, Any]` and returns `{"success": bool, "formatted": str, ...}`.
-- Tools must never raise. `dispatch_tool()` is the single catch-all boundary.
-- `gmail` tool with `action="send"` is blocked — sending requires the UI confirmation gate in `ui/app.py`.
-- Connector-backed tools (calendar, gmail, slack) degrade gracefully to mock data when credentials are absent.
+Every tool: `dict -> {"success": bool, "formatted": str, ...}`, never raises (`dispatch_tool` is the catch-all). `gmail action="send"` is blocked — sending requires an explicit confirmed UI action.
 
-### Monitor FSM (monitor/fsm.py)
-- States: POLL → EXTRACT → UPDATE → CHECK → ALERT → (IDLE or ERROR)
-- On error: sleeps `ERROR_SLEEP_SECONDS` (300s) before next cycle.
-- Alerts written to `alerts.jsonl` (one JSON object per line); `alert_event` threading.Event signals the UI.
-- `monitor_runner` is a shared singleton started as a daemon thread by `launcher.py` after the main UI loads.
+### Hermes connectors (signal sources)
+`connectors/{strava,spotify,todoist,apple_health}.py` derive **signals** (fitness/sleep/tasks/mood) — not messages or commitments — so they are wired as **agent tools** (`strava`, `apple_health`, `todoist`, `spotify` in `agent/tools.py`, via `hermes_tools/`), NOT into the monitor. Each derives locally, records a snapshot to `kg/connector_store.py` (a separate `connectors.db`), and falls back to mock data without keys. `GET /api/connectors` surfaces them; the React **Connectors** view renders them. `mcp_serve.py` optionally exposes the tools over MCP as a separate process (`python mcp_serve.py`). `hermes_skills/*.md` + `hermes_jobs/*.json` are design specs for a proactive cron runtime that is **not yet implemented** (no loader/runner).
 
-### Knowledge Graph
-- SQLite schema: `persons`, `commitments`, `conflicts`, `turns`, `rag_documents`
-- Commitment types: `HARD` (calendar, confidence=1.0), `SOFT` (chat, 0.4–0.9), `TENTATIVE` (<0.6, no hard alerts)
-- Conflict edges are auto-created on temporal overlap; `alerted` flag prevents re-alerting on re-poll.
-- Always open the DB via `get_db_connection(cfg.db_path)` — it calls `init_db()` which is idempotent.
+### Knowledge graph
+Tables: `persons`, `commitments`, `conflicts`, `turns`, `rag_documents`. Commitment types HARD/SOFT/TENTATIVE. Conflict detection is **person-agnostic** (the user's whole timeline) and skips TENTATIVE. Open the DB via `get_db_connection(cfg.db_path)` (idempotent `init_db`).
+
+## Deployment
+`infra/` holds the Dockerfile (HF Spaces, port 7860) + a deploy guide; `.github/workflows/` has CI + the HF Spaces deploy. Set `ACCESS_KEY` + `GROQ_API_KEY` as Space secrets.
 
 ## Environment variables
-
 | Variable | Purpose |
 |---|---|
-| `GROQ_API_KEY` | Groq cloud LLM (required for L2/L3) |
-| `TAVILY_API_KEY` | Web search (falls back to DuckDuckGo if absent) |
-| `SLACK_BOT_TOKEN` | Slack connector (falls back to mock) |
-| `GOOGLE_CREDENTIALS_PATH` | OAuth credentials for Calendar/Gmail (defaults to `./credentials.json`) |
-| `KM_DB_PATH` | Override SQLite path (used by smoke tests) |
-| `KM_LOCAL_MODEL` | Override local Ollama model |
-| `KM_OLLAMA_URL` | Override Ollama base URL |
-| `MAX_REACT_ITERATIONS` | Cap L3 ReAct loop iterations (default 5) |
+| `ACCESS_KEY` | Locks the app (X-Access-Key); unset = open |
+| `GROQ_API_KEY` | Cloud LLM (L2/L3 + cloud-routed tasks) |
+| `TAVILY_API_KEY` | Web search (falls back to DuckDuckGo) |
+| `SLACK_BOT_TOKEN`, `GOOGLE_CREDENTIALS_PATH` | Live Slack / Calendar / Gmail (else mock) |
+| `STRAVA_*`, `TODOIST_API_TOKEN`, `SPOTIFY_*` | Hermes connectors (else mock) |
+| `ALLOWED_ORIGINS` | CORS origins (only if the front-end is served from a different origin) |
+| `KM_DB_PATH`, `KM_LOCAL_MODEL`, `KM_OLLAMA_URL` | Overrides |

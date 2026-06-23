@@ -14,10 +14,8 @@ Usage:
     python mcp_serve.py              # listens on default port 6789
     python mcp_serve.py --port 7000
 
-Hermes cli-config.yaml:
-    mcp_servers:
-      - name: knowledgemind
-        url: http://localhost:6789/mcp
+Connect an MCP client (e.g. the Hermes Agent) by pointing it at:
+    http://localhost:6789/mcp
 """
 
 from __future__ import annotations

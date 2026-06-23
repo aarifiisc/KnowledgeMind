@@ -50,7 +50,6 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 class AppConfig:
     # LLM — base
     local_model: str = "qwen2.5:3b"            # lightweight tasks, greetings
-    local_model_reasoning: str = "nous-hermes3" # personal data reasoning (extension)
     ollama_base_url: str = "http://localhost:11434"
     cloud_model: str = "llama-3.3-70b-versatile"
     cloud_model_fast: str = "llama-3.1-8b-instant"
