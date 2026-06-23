@@ -328,6 +328,274 @@ export function Documents() {
   );
 }
 
+/* ---- Proactive Runtime --------------------------------------------------- */
+
+function Md({ text }) {
+  if (!text) return null;
+  return (
+    <div className="md-body">
+      {text.split("\n").map((line, i) => {
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <div key={i} className={line === "" ? "md-blank" : undefined}>
+            {parts.map((p, j) => p.startsWith("**") && p.endsWith("**")
+              ? <strong key={j}>{p.slice(2, -2)}</strong>
+              : p)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function relTime(iso) {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime();
+  if (isNaN(ms)) return iso;
+  const diff = (Date.now() - ms) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function humanCron(expr) {
+  if (!expr) return expr;
+  const p = expr.trim().split(/\s+/);
+  if (p.length !== 5) return expr;
+  const [min, hr, dom, mon, dow] = p;
+  if (dom === "*" && mon === "*" && dow === "*") {
+    if (/^\d+$/.test(min) && /^\d+$/.test(hr))
+      return `Daily ${hr.padStart(2, "0")}:${min.padStart(2, "0")}`;
+    if (/^\*\/\d+$/.test(hr) && min === "0")
+      return `Every ${hr.replace("*/", "")}h`;
+    if (/^\*\/\d+$/.test(min))
+      return `Every ${min.replace("*/", "")} min`;
+  }
+  return expr;
+}
+
+const CheckIcon = svg(<polyline points="20 6 9 17 4 12"/>);
+const ClockIcon = svg(<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>);
+const SilentIcon = svg(<path d="M5 12h14"/>);
+
+export function Proactive({ refresh, notify }) {
+  const [briefing, setBriefing] = useState(null);
+  const [nudges, setNudges] = useState([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [jobs, setJobs] = useState([]);
+  const [jobErrors, setJobErrors] = useState([]);
+  const [firing, setFiring] = useState(false);
+  const [lastTick, setLastTick] = useState(null);
+  const [showDismissed, setShowDismissed] = useState(false);
+
+  function fetchAll(withDismissed) {
+    const d = withDismissed !== undefined ? withDismissed : showDismissed;
+    Promise.all([
+      getJSON("/api/briefing"),
+      getJSON("/api/nudges" + (d ? "?include_dismissed=true" : "")),
+      getJSON("/api/runtime/jobs"),
+    ]).then(([b, n, j]) => {
+      setBriefing(b.briefing || null);
+      setNudges(n.nudges || []);
+      setActiveCount(n.active_count || 0);
+      setJobs(j.jobs || []);
+      setJobErrors(j.errors || []);
+    }).catch(() => {});
+  }
+
+  useEffect(() => { fetchAll(showDismissed); }, [refresh, showDismissed]);
+
+  async function runNow() {
+    setFiring(true);
+    try {
+      const r = await postJSON("/api/runtime/tick?force=true");
+      setLastTick(r.fired || []);
+      fetchAll();
+      const surfaced = (r.fired || []).filter((f) => f.surfaced).length;
+      notify(`${r.count || 0} skill(s) ran · ${surfaced} new nudge(s)`);
+    } catch {
+      notify("Tick failed — check the backend logs.");
+    }
+    setFiring(false);
+  }
+
+  async function dismiss(id) {
+    setNudges((prev) => prev.filter((n) => n.id !== id));
+    setActiveCount((c) => Math.max(0, c - 1));
+    await postJSON(`/api/nudges/${id}/dismiss`).catch(() => {});
+  }
+
+  const visibleNudges = showDismissed ? nudges : nudges.filter((n) => !n.dismissed);
+  const activeNudges = visibleNudges.filter((n) => !n.suppressed && !n.dismissed);
+  const suppressedNudges = visibleNudges.filter((n) => n.suppressed);
+
+  return (
+    <div className="view">
+      <div className="privacy-banner">
+        {ShieldIcon}
+        <div><strong>Every skill routes through the privacy layer.</strong> Personal data runs on-device (LOCAL). Nudges are stored only in your local database and never sent to the cloud.</div>
+      </div>
+
+      <div className="proactive-toprow">
+        <div>
+          <h2 className="section-title" style={{ margin: 0 }}>Today</h2>
+          {briefing && <div className="briefing-headline">{briefing.headline}</div>}
+        </div>
+        <button className="btn btn-primary" onClick={runNow} disabled={firing}>
+          {ClockIcon}<span>{firing ? "Running…" : "Run now"}</span>
+        </button>
+      </div>
+
+      <div className="kpi-row" style={{ marginTop: 16 }}>
+        <div className="kpi"><div className="num">{activeCount}</div><div className="lbl">Active nudges</div></div>
+        <div className="kpi"><div className="num">{jobs.length}</div><div className="lbl">Scheduled skills</div></div>
+        <div className="kpi"><div className="num">{briefing ? briefing.commitments_today.length : "—"}</div><div className="lbl">Commitments today</div></div>
+        <div className={"kpi" + (briefing && briefing.conflicts && briefing.conflicts.length > 0 ? " alert" : "")}>
+          <div className="num">{briefing ? briefing.conflicts.length : "—"}</div>
+          <div className="lbl">Conflicts</div>
+        </div>
+      </div>
+
+      <h2 className="section-title">Daily Briefing</h2>
+      <div className="card">
+        {!briefing
+          ? <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Loading briefing…</div>
+          : briefing.surface === false
+          ? <Empty big="🌅" title="Looks like a quiet day" sub="Nothing scheduled — enjoy the open space." />
+          : (
+            <>
+              <Md text={briefing.formatted} />
+              {(briefing.task_load || briefing.readiness) && (
+                <div className="briefing-chips">
+                  {briefing.task_load && (
+                    <>
+                      <span className={"chip " + (briefing.task_load.heavy_day ? "chip-demo" : "chip-muted")}>
+                        {briefing.task_load.due_today} due today
+                      </span>
+                      {briefing.task_load.overdue > 0 && (
+                        <span className="chip chip-demo">{briefing.task_load.overdue} overdue</span>
+                      )}
+                    </>
+                  )}
+                  {briefing.readiness && briefing.readiness.recovery_status && (
+                    <span className={"chip " + (briefing.readiness.low_hrv ? "chip-demo" : "chip-live")}>
+                      Recovery: {briefing.readiness.recovery_status}
+                    </span>
+                  )}
+                  {briefing.readiness && briefing.readiness.sleep_hours != null && (
+                    <span className="chip chip-muted">Slept {briefing.readiness.sleep_hours}h</span>
+                  )}
+                </div>
+              )}
+            </>
+          )
+        }
+      </div>
+
+      <div className="section-title-row">
+        <h2 className="section-title" style={{ margin: 0 }}>Nudge Feed</h2>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {activeCount > 0 && <span className="nudge-count-badge">{activeCount} active</span>}
+          <button className="btn" style={{ fontSize: 12, padding: "5px 11px" }} onClick={() => setShowDismissed((x) => !x)}>
+            {showDismissed ? "Hide dismissed" : "Show dismissed"}
+          </button>
+        </div>
+      </div>
+      <div className="stack">
+        {activeNudges.length === 0 && suppressedNudges.length === 0
+          ? <Empty big="🔔" title="No nudges yet" sub='Press "Run now" to fire the scheduled skills.' />
+          : activeNudges.map((n) => (
+            <div key={n.id} className="tl nudge-item">
+              <div className="nudge-time">{relTime(n.iso)}</div>
+              <div className="body nudge-body"><Md text={n.text} /><div className="nudge-skill"><span className="badge badge-src">{n.skill || n.job}</span></div></div>
+              <button className="nudge-dismiss" aria-label="Dismiss" onClick={() => dismiss(n.id)}>✕</button>
+            </div>
+          ))
+        }
+        {suppressedNudges.length > 0 && (
+          <>
+            <div className="day-label" style={{ marginTop: 4, opacity: 0.7 }}>Held — quiet hours</div>
+            {suppressedNudges.map((n) => (
+              <div key={n.id} className="tl nudge-item nudge-suppressed">
+                <div className="nudge-time">{relTime(n.iso)}</div>
+                <div className="body nudge-body"><Md text={n.text} /><div className="nudge-skill"><span className="badge badge-src">{n.skill || n.job}</span></div></div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      <h2 className="section-title">Scheduled Skills</h2>
+      <div className="stack">
+        {jobs.length === 0
+          ? <Empty big="⚙️" title="No jobs loaded" sub="Check that hermes_jobs/*.json files are present." />
+          : jobs.map((job) => (
+            <div key={job.id} className="tl job-row">
+              <div className="job-dot" />
+              <div className="body">
+                <div className="t" style={{ fontWeight: 580 }}>{job.id.replace(/_/g, " ")}</div>
+                <div className="m" style={{ marginTop: 5 }}>
+                  <span className="job-schedule">{humanCron(job.schedule)}</span>
+                  <span className="badge badge-local">{job.agency_level}</span>
+                  {job.quiet_hours_aware && <span className="badge badge-src">quiet hours</span>}
+                </div>
+              </div>
+              <div className="job-lastrun">
+                {job.last_fired
+                  ? <>{job.last_fired}<br /><span style={{ color: "var(--text-muted)", fontSize: 11 }}>last run</span></>
+                  : <span style={{ opacity: 0.45 }}>never run</span>}
+              </div>
+            </div>
+          ))
+        }
+        {jobErrors.length > 0 && (
+          <div className="card" style={{ borderLeft: "3px solid var(--danger)" }}>
+            <strong style={{ color: "var(--danger)", fontSize: 13 }}>Load warnings</strong>
+            {jobErrors.map((e, i) => <div key={i} style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>{e}</div>)}
+          </div>
+        )}
+      </div>
+
+      {lastTick && (
+        <>
+          <h2 className="section-title">Last Run · Activity Trace</h2>
+          <div className="stack">
+            {lastTick.map((item, i) => (
+              <div key={i} className={"card trace-item" + (item.surfaced ? " trace-surfaced" : item.suppressed ? " trace-suppressed" : " trace-silent")}>
+                <div className="trace-head">
+                  <span className="trace-icon">{item.surfaced ? CheckIcon : item.suppressed ? ClockIcon : SilentIcon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="trace-job">{item.job}</div>
+                    <div style={{ fontSize: 12, marginTop: 2 }}>
+                      {item.surfaced
+                        ? <span style={{ color: "var(--local)", fontWeight: 600 }}>Nudge #{item.nudge_id} created</span>
+                        : item.suppressed
+                        ? <span style={{ color: "var(--text-muted)" }}>Suppressed · quiet hours</span>
+                        : <span style={{ color: "var(--text-muted)" }}>{item.reason || "Skill chose to stay silent"}</span>}
+                    </div>
+                  </div>
+                  {item.routing_log && item.routing_log.length > 0 && (
+                    <div className="route" style={{ flexShrink: 0 }}>
+                      {item.routing_log.map((e, j) => {
+                        const cloud = (JSON.stringify(e).toUpperCase()).includes("CLOUD");
+                        return <span key={j} className={"badge " + (cloud ? "badge-cloud" : "badge-local")}>{e.tool || e.action || "step"} · {cloud ? "CLOUD" : "LOCAL"}</span>;
+                      })}
+                    </div>
+                  )}
+                </div>
+                {item.surfaced && item.answer && (
+                  <div className="trace-answer"><Md text={item.answer} /></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ---- Settings ------------------------------------------------------------ */
 export function Settings() {
   const [cfg, setCfg] = useState(null);
