@@ -44,6 +44,12 @@ class RoutingResult:
 # Privacy contract constants (SPEC 4.6 / 7) -- DO NOT WEAKEN
 # ---------------------------------------------------------------------------
 
+# Tools that prefer CLOUD when privacy is low (below threshold).
+# These bypass the complexity check — low-privacy + this set = CLOUD.
+PREFER_CLOUD_TOOLS: frozenset[str] = frozenset({
+    "web_search",
+})
+
 # Tools that must always run LOCAL regardless of any score.
 ALWAYS_LOCAL_TOOLS: frozenset[str] = frozenset({
     "query_kg",
@@ -160,6 +166,18 @@ class Router:
                 tool_name=tool_name,
             )
 
+        if tool_name in PREFER_CLOUD_TOOLS and privacy < PRIVACY_LOCAL_THRESHOLD:
+            return RoutingResult(
+                decision=RoutingDecision.CLOUD,
+                privacy_score=privacy,
+                complexity_score=complexity,
+                reason=(
+                    f"'{tool_name}' prefers CLOUD and privacy score {privacy:.2f} "
+                    f"< {PRIVACY_LOCAL_THRESHOLD} -> CLOUD."
+                ),
+                tool_name=tool_name,
+            )
+
         if privacy >= PRIVACY_LOCAL_THRESHOLD:
             return RoutingResult(
                 decision=RoutingDecision.LOCAL,
@@ -206,11 +224,21 @@ if __name__ == "__main__":
         assert result.decision == RoutingDecision.LOCAL, f"{pinned} routed to cloud!"
     print(f"=> all {len(ALWAYS_LOCAL_TOOLS)} ALWAYS_LOCAL_TOOLS stay LOCAL")
 
-    # A low-privacy, complex public query may go CLOUD.
-    web = router.route("research and compare the latest LLM benchmark papers", "web_search")
-    print(f"=> web_search: {web.decision.value} (privacy={web.privacy_score:.2f}, "
-          f"complexity={web.complexity_score:.2f})")
-    assert web.decision == RoutingDecision.CLOUD, "expected web_search -> cloud"
+    # web_search goes CLOUD for any low-privacy query (short or long).
+    for query in [
+        "what is the capital of France",
+        "research and compare the latest LLM benchmark papers",
+    ]:
+        web = router.route(query, "web_search")
+        print(f"=> web_search ({query[:40]}...): {web.decision.value} "
+              f"(privacy={web.privacy_score:.2f}, complexity={web.complexity_score:.2f})")
+        assert web.decision == RoutingDecision.CLOUD, f"expected web_search -> CLOUD for: {query}"
+
+    # web_search stays LOCAL when the query contains enough personal signals (>= 0.65).
+    personal_web = router.route("search my calendar for my meetings with my team", "web_search")
+    print(f"=> web_search (personal): {personal_web.decision.value} "
+          f"(privacy={personal_web.privacy_score:.2f})")
+    assert personal_web.decision == RoutingDecision.LOCAL, "personal web_search should stay LOCAL"
 
     # A personal query with no tool must stay LOCAL on privacy score.
     personal = router.route("what meetings do I have on my calendar tomorrow", None)

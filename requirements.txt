@@ -62,6 +62,9 @@ rich
 pandas
 tabulate
 
+# -- SimChat (spec.md) -------------------------------------------------------
+matplotlib   # graph rendering in simchat/visualizer.py (eval scripts)
+
 # -- MCP server (KnowledgeMind exposes tools to Hermes Agent via MCP) --------
 mcp                # includes FastMCP; python mcp_serve.py
 

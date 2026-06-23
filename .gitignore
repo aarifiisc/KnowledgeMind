@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 .env
 .env.*
-!.env.example
+.env.example
 credentials.json
 client_secret*.json
 google_token.json
@@ -72,3 +72,7 @@ npm-debug.log*
 
 # Demo screenshots / captures — keep binaries out of git (HF Spaces rejects them)
 /*.png
+
+# Claude files
+spec.md
+plan.md

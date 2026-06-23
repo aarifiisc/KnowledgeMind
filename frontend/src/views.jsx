@@ -39,7 +39,7 @@ export function Dashboard({ refresh }) {
         setConflicts(c2.conflicts || []);
         setCounts({ real: c2.real_count, dup: c2.duplicate_count });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [refresh]);
 
   const sources = new Set(commitments.map((c) => c.source));
@@ -302,7 +302,7 @@ export function Privacy({ refresh }) {
   useEffect(() => {
     Promise.all([getJSON("/api/privacy/report"), getJSON("/api/audit?limit=40")])
       .then(([rep, aud]) => { setReport(rep); setRecords((aud.records || []).slice().reverse()); })
-      .catch(() => {});
+      .catch(() => { });
   }, [refresh]);
   if (!report) return <Empty big="🔒" title="Loading privacy report…" sub="" />;
   const kpis = [
@@ -342,7 +342,7 @@ export function Documents() {
   const [docs, setDocs] = useState([]);
   const [status, setStatus] = useState("");
   const fileRef = useRef(null);
-  const load = () => getJSON("/api/documents").then((d) => setDocs(d.documents || [])).catch(() => {});
+  const load = () => getJSON("/api/documents").then((d) => setDocs(d.documents || [])).catch(() => { });
   useEffect(() => { load(); }, []);
 
   async function upload(e) {
@@ -383,6 +383,7 @@ export function Documents() {
   );
 }
 
+
 /* ---- Proactive Runtime --------------------------------------------------- */
 
 function Md({ text }) {
@@ -402,6 +403,97 @@ function Md({ text }) {
     </div>
   );
 }
+
+/* ---- SimChat ------------------------------------------------------------- */
+const PERSONAS_META = [
+  { id: "bob", label: "Bob", desc: "Terse · direct" },
+  { id: "annie", label: "Annie", desc: "Formal · professional" },
+  { id: "cindy", label: "Cindy", desc: "Casual · friendly" },
+];
+
+const PERSONA_COLORS = { bob: "#b45309", annie: "#4f46e5", cindy: "#047857" };
+
+function esc2(s) {
+  return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function buildSimChatGraphSVG(data) {
+  const { nodes = [], edges = [] } = data;
+  const persons = nodes.filter((n) => n.type === "Person");
+  const commitments = nodes.filter((n) => n.type === "Commitment");
+  if (!commitments.length) return "";
+
+  const topPad = 34, gap = 70, leftX = 90, cardX = 410, cardW = 280, cardH = 46;
+  const rows = commitments.length;
+  const H = Math.max(topPad * 2 + (rows - 1) * gap + cardH, 150);
+  const W = cardX + cardW + 110;
+
+  const commY = (j) => topPad + j * gap;
+  const span = rows <= 1 ? 0 : (rows - 1) * gap;
+  const personY = (i) =>
+    topPad + cardH / 2 + (persons.length <= 1 ? span / 2 : (i * span) / Math.max(persons.length - 1, 1));
+
+  const personIdx = new Map(persons.map((p, i) => [p.id, i]));
+  const commIdx = new Map(commitments.map((c, j) => [c.id, j]));
+  const srcColor = (src) => PERSONA_COLORS[src] || "#6b7280";
+
+  let edgesSVG = "", conflictSVG = "", nodesSVG = "";
+
+  edges.filter((e) => e.label === "has_commitment").forEach((e) => {
+    const pi = personIdx.get(e.source), cj = commIdx.get(e.target);
+    if (pi === undefined || cj === undefined) return;
+    const x1 = leftX + 22, y1 = personY(pi), x2 = cardX, y2 = commY(cj) + cardH / 2;
+    const mx = (x1 + x2) / 2;
+    edgesSVG += `<path class="gedge" d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"/>`;
+  });
+
+  edges.filter((e) => e.label === "conflict").forEach((e) => {
+    const ja = commIdx.get(e.source), jb = commIdx.get(e.target);
+    if (ja === undefined || jb === undefined) return;
+    const x = cardX + cardW, ya = commY(ja) + cardH / 2, yb = commY(jb) + cardH / 2;
+    const bulge = x + 56 + Math.abs(ya - yb) * 0.12;
+    const mins = Math.round(e.overlap_minutes || 0);
+    conflictSVG += `<path class="gconflict" d="M${x} ${ya} C ${bulge} ${ya}, ${bulge} ${yb}, ${x} ${yb}"/>`;
+    conflictSVG += `<text class="gconflict-label" x="${bulge - 4}" y="${(ya + yb) / 2}">${mins}m</text>`;
+  });
+
+  persons.forEach((p, i) => {
+    const y = personY(i);
+    const init = p.label.slice(0, 1).toUpperCase();
+    nodesSVG += `<g><circle class="gperson" cx="${leftX}" cy="${y}" r="20"/><text class="gperson-init" x="${leftX}" y="${y + 4}" text-anchor="middle">${esc2(init)}</text><text class="gnode-label" x="${leftX}" y="${y + 36}" text-anchor="middle">${esc2(trunc(p.label, 12))}</text></g>`;
+  });
+
+  commitments.forEach((c, j) => {
+    const y = commY(j), color = srcColor(c.source);
+    nodesSVG += `<g><rect class="gcard" x="${cardX}" y="${y}" width="${cardW}" height="${cardH}" rx="10" style="stroke:${color}"/><text class="gnode-label" x="${cardX + 13}" y="${y + 18}">${esc2(trunc(c.label, 30))}</text><text class="gnode-sub" x="${cardX + 13}" y="${y + 35}">${esc2(c.source || "")} · ${esc2(c.commitment_type || "")}</text></g>`;
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin meet">${edgesSVG}${conflictSVG}${nodesSVG}</svg>`;
+}
+
+function SimConflictAlert({ cf }) {
+  return (
+    <div className="simchat-alert">
+      <div className="simchat-alert-head">
+        {AlertIcon}
+        <span>Conflict Detected</span>
+        <span className="simchat-alert-mins">{Math.round(cf.overlap_minutes)} min overlap</span>
+      </div>
+      <div className="simchat-alert-vs">
+        <div className="simchat-alert-leg">
+          <div className="src" style={{ color: PERSONA_COLORS[cf.a_source] || "inherit" }}>{cf.a_source}</div>
+          <div className="txt">{trunc(cf.a_text, 60)}</div>
+        </div>
+        <div className="simchat-alert-x">overlaps</div>
+        <div className="simchat-alert-leg">
+          <div className="src" style={{ color: PERSONA_COLORS[cf.b_source] || "inherit" }}>{cf.b_source}</div>
+          <div className="txt">{trunc(cf.b_text, 60)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function relTime(iso) {
   if (!iso) return "";
@@ -430,9 +522,9 @@ function humanCron(expr) {
   return expr;
 }
 
-const CheckIcon = svg(<polyline points="20 6 9 17 4 12"/>);
-const ClockIcon = svg(<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>);
-const SilentIcon = svg(<path d="M5 12h14"/>);
+const CheckIcon = svg(<polyline points="20 6 9 17 4 12" />);
+const ClockIcon = svg(<><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>);
+const SilentIcon = svg(<path d="M5 12h14" />);
 
 export function Proactive({ refresh, notify }) {
   const [briefing, setBriefing] = useState(null);
@@ -456,7 +548,7 @@ export function Proactive({ refresh, notify }) {
       setActiveCount(n.active_count || 0);
       setJobs(j.jobs || []);
       setJobErrors(j.errors || []);
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   useEffect(() => { fetchAll(showDismissed); }, [refresh, showDismissed]);
@@ -490,7 +582,7 @@ export function Proactive({ refresh, notify }) {
   async function dismiss(id) {
     setNudges((prev) => prev.filter((n) => n.id !== id));
     setActiveCount((c) => Math.max(0, c - 1));
-    await postJSON(`/api/nudges/${id}/dismiss`).catch(() => {});
+    await postJSON(`/api/nudges/${id}/dismiss`).catch(() => { });
   }
 
   const visibleNudges = showDismissed ? nudges : nudges.filter((n) => !n.dismissed);
@@ -529,34 +621,34 @@ export function Proactive({ refresh, notify }) {
         {!briefing
           ? <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Loading briefing…</div>
           : briefing.surface === false
-          ? <Empty big="🌅" title="Looks like a quiet day" sub="Nothing scheduled — enjoy the open space." />
-          : (
-            <>
-              <Md text={briefing.formatted} />
-              {(briefing.task_load || briefing.readiness) && (
-                <div className="briefing-chips">
-                  {briefing.task_load && (
-                    <>
-                      <span className={"chip " + (briefing.task_load.heavy_day ? "chip-demo" : "chip-muted")}>
-                        {briefing.task_load.due_today} due today
+            ? <Empty big="🌅" title="Looks like a quiet day" sub="Nothing scheduled — enjoy the open space." />
+            : (
+              <>
+                <Md text={briefing.formatted} />
+                {(briefing.task_load || briefing.readiness) && (
+                  <div className="briefing-chips">
+                    {briefing.task_load && (
+                      <>
+                        <span className={"chip " + (briefing.task_load.heavy_day ? "chip-demo" : "chip-muted")}>
+                          {briefing.task_load.due_today} due today
+                        </span>
+                        {briefing.task_load.overdue > 0 && (
+                          <span className="chip chip-demo">{briefing.task_load.overdue} overdue</span>
+                        )}
+                      </>
+                    )}
+                    {briefing.readiness && briefing.readiness.recovery_status && (
+                      <span className={"chip " + (briefing.readiness.low_hrv ? "chip-demo" : "chip-live")}>
+                        Recovery: {briefing.readiness.recovery_status}
                       </span>
-                      {briefing.task_load.overdue > 0 && (
-                        <span className="chip chip-demo">{briefing.task_load.overdue} overdue</span>
-                      )}
-                    </>
-                  )}
-                  {briefing.readiness && briefing.readiness.recovery_status && (
-                    <span className={"chip " + (briefing.readiness.low_hrv ? "chip-demo" : "chip-live")}>
-                      Recovery: {briefing.readiness.recovery_status}
-                    </span>
-                  )}
-                  {briefing.readiness && briefing.readiness.sleep_hours != null && (
-                    <span className="chip chip-muted">Slept {briefing.readiness.sleep_hours}h</span>
-                  )}
-                </div>
-              )}
-            </>
-          )
+                    )}
+                    {briefing.readiness && briefing.readiness.sleep_hours != null && (
+                      <span className="chip chip-muted">Slept {briefing.readiness.sleep_hours}h</span>
+                    )}
+                  </div>
+                )}
+              </>
+            )
         }
       </div>
 
@@ -634,8 +726,8 @@ export function Proactive({ refresh, notify }) {
                       {item.surfaced
                         ? <span style={{ color: "var(--local)", fontWeight: 600 }}>Nudge #{item.nudge_id} created</span>
                         : item.suppressed
-                        ? <span style={{ color: "var(--text-muted)" }}>Suppressed · quiet hours</span>
-                        : <span style={{ color: "var(--text-muted)" }}>{item.reason || "Skill chose to stay silent"}</span>}
+                          ? <span style={{ color: "var(--text-muted)" }}>Suppressed · quiet hours</span>
+                          : <span style={{ color: "var(--text-muted)" }}>{item.reason || "Skill chose to stay silent"}</span>}
                     </div>
                   </div>
                   {item.routing_log && item.routing_log.length > 0 && (
@@ -659,6 +751,177 @@ export function Proactive({ refresh, notify }) {
   );
 }
 
+
+export function SimChat({ notify }) {
+  const [activeTab, setActiveTab] = useState("bob");
+  const [histories, setHistories] = useState({ bob: [], annie: [], cindy: [] });
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [graphData, setGraphData] = useState({ nodes: [], edges: [] });
+  const [conflicts, setConflicts] = useState([]);
+  const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const threadRef = useRef(null);
+
+  useEffect(() => {
+    if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
+  }, [histories, activeTab, busy]);
+
+  async function send(e) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    setHistories((h) => ({ ...h, [activeTab]: [...h[activeTab], { role: "user", text }] }));
+    setBusy(true);
+    try {
+      const r = await postJSON("/api/simchat/message", {
+        conversation_id: activeTab,
+        text,
+        current_date: currentDate,
+      });
+      setHistories((h) => ({
+        ...h,
+        [activeTab]: [...h[activeTab], { role: "persona", text: r.persona_reply }],
+      }));
+      if (r.graph) setGraphData(r.graph);
+      if (r.conflicts) {
+        setConflicts(r.conflicts);
+        if (r.conflicts.length > (conflicts.length)) {
+          notify && notify("Conflict detected across conversations!");
+        }
+      }
+    } catch {
+      setHistories((h) => ({
+        ...h,
+        [activeTab]: [...h[activeTab], { role: "error", text: "Response unavailable — check server logs." }],
+      }));
+    }
+    setBusy(false);
+  }
+
+  async function reset() {
+    try { await postJSON("/api/simchat/reset"); } catch { /* ignore */ }
+    setHistories({ bob: [], annie: [], cindy: [] });
+    setConflicts([]);
+    setGraphData({ nodes: [], edges: [] });
+  }
+
+  const activeHistory = histories[activeTab];
+  const activeMeta = PERSONAS_META.find((p) => p.id === activeTab);
+
+  return (
+    <div className="simchat">
+      {/* LEFT — Chat panel */}
+      <div className="simchat-left">
+        <div className="simchat-header">
+          <div className="simchat-date-wrap">
+            <span>Date</span>
+            <input
+              className="input simchat-date"
+              type="date"
+              value={currentDate}
+              onChange={(e) => setCurrentDate(e.target.value)}
+            />
+          </div>
+          <button className="btn" onClick={reset} title="Clear session">Reset</button>
+        </div>
+
+        <div className="simchat-tabs" role="tablist">
+          {PERSONAS_META.map((p) => (
+            <button
+              key={p.id}
+              role="tab"
+              aria-selected={activeTab === p.id}
+              className={"simchat-tab" + (activeTab === p.id ? " active" : "")}
+              onClick={() => setActiveTab(p.id)}
+              style={activeTab === p.id ? { borderBottomColor: PERSONA_COLORS[p.id] } : {}}
+            >
+              <span className="tab-name">{p.label}</span>
+              <span className="tab-desc">{p.desc}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="simchat-thread" ref={threadRef} role="log">
+          {activeHistory.length === 0 && (
+            <div className="simchat-empty">Start a conversation with {activeMeta?.label}…</div>
+          )}
+          {activeHistory.map((msg, i) => (
+            <div key={i} className={"simchat-msg simchat-" + msg.role}>
+              <div className="simchat-bubble">{msg.text}</div>
+            </div>
+          ))}
+          {busy && (
+            <div className="simchat-msg simchat-persona">
+              <div className="simchat-bubble simchat-typing">…</div>
+            </div>
+          )}
+        </div>
+
+        <form className="simchat-composer" onSubmit={send}>
+          <input
+            className="input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={`Message ${activeMeta?.label}…`}
+            disabled={busy}
+            autoFocus
+          />
+          <button className="btn btn-primary" type="submit" disabled={busy || !input.trim()} aria-label="Send">
+            {SendIcon}
+          </button>
+        </form>
+      </div>
+
+      {/* RIGHT — Graph + Alerts */}
+      <div className="simchat-right">
+        <div className="card simchat-graph-card">
+          <div className="simchat-graph-head">
+            Knowledge Graph
+            <div className="graph-legend" style={{ marginTop: 8, marginBottom: 0 }}>
+              {Object.entries(PERSONA_COLORS).map(([id, color]) => (
+                <span key={id} className="lg">
+                  <i className="dot" style={{ background: color }}></i>
+                  {id.charAt(0).toUpperCase() + id.slice(1)}
+                </span>
+              ))}
+              <span className="lg"><i className="line line-conflict"></i> Conflict</span>
+            </div>
+          </div>
+          <div className="graph-wrap">
+            {graphData.nodes.filter((n) => n.type === "Commitment").length === 0 ? (
+              <div className="empty" style={{ border: "none" }}>
+                <div className="big">&#x1f578;</div>
+                <strong>Graph will appear as you add scheduling messages</strong>
+              </div>
+            ) : (
+              <div dangerouslySetInnerHTML={{ __html: buildSimChatGraphSVG(graphData) }} />
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="section-title" style={{ marginTop: 0 }}>
+            Conflict Alerts {conflicts.length > 0 && <span className="badge badge-hard">{conflicts.length}</span>}
+          </h3>
+          {conflicts.length === 0 ? (
+            <div className="empty">
+              <div className="big">&#x2705;</div>
+              <strong>No conflicts yet</strong>
+              <div>Overlapping commitments will appear here.</div>
+            </div>
+          ) : (
+            <div className="stack" style={{ marginBottom: 0 }}>
+              {conflicts.map((cf, i) => <SimConflictAlert key={i} cf={cf} />)}
+            </div>
+          )}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 /* ---- Settings ------------------------------------------------------------ */
 export function Settings() {
   const [cfg, setCfg] = useState(null);
@@ -671,7 +934,7 @@ export function Settings() {
     getJSON("/api/config").then((c) => {
       setCfg(c);
       setForm((f) => ({ ...f, local_model: c.local_model || "", google_credentials_path: c.google_credentials_path || "", complexity_threshold: c.complexity_threshold ?? 0.6, allow_cloud_fallback: c.allow_cloud_fallback ?? true }));
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const upd = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -709,36 +972,36 @@ export function Settings() {
 
   return (
     <>
-    <div className="card">
-      <h2 className="section-title" style={{ marginTop: 0 }}>Models &amp; keys</h2>
-      <div className="form-grid">
-        <label>Local model (Ollama)<input className="input" value={form.local_model} onChange={upd("local_model")} placeholder="qwen2.5:3b" /></label>
-        <label>Complexity threshold (cloud routing)<input className="input" type="number" min="0" max="1" step="0.05" value={form.complexity_threshold} onChange={upd("complexity_threshold")} /></label>
-        <label>Groq API key {cfg && hint(cfg.groq_api_key_set)}<input className="input" type="password" value={form.groq_api_key} onChange={upd("groq_api_key")} placeholder="gsk_..." /></label>
-        <label>Tavily API key {cfg && hint(cfg.tavily_api_key_set)}<input className="input" type="password" value={form.tavily_api_key} onChange={upd("tavily_api_key")} placeholder="tvly-..." /></label>
-        <label>Slack bot token {cfg && hint(cfg.slack_bot_token_set)}<input className="input" type="password" value={form.slack_bot_token} onChange={upd("slack_bot_token")} placeholder="xoxb-..." /></label>
-        <label>Google credentials path<input className="input" value={form.google_credentials_path} onChange={upd("google_credentials_path")} placeholder="./credentials.json" /></label>
+      <div className="card">
+        <h2 className="section-title" style={{ marginTop: 0 }}>Models &amp; keys</h2>
+        <div className="form-grid">
+          <label>Local model (Ollama)<input className="input" value={form.local_model} onChange={upd("local_model")} placeholder="qwen2.5:3b" /></label>
+          <label>Complexity threshold (cloud routing)<input className="input" type="number" min="0" max="1" step="0.05" value={form.complexity_threshold} onChange={upd("complexity_threshold")} /></label>
+          <label>Groq API key {cfg && hint(cfg.groq_api_key_set)}<input className="input" type="password" value={form.groq_api_key} onChange={upd("groq_api_key")} placeholder="gsk_..." /></label>
+          <label>Tavily API key {cfg && hint(cfg.tavily_api_key_set)}<input className="input" type="password" value={form.tavily_api_key} onChange={upd("tavily_api_key")} placeholder="tvly-..." /></label>
+          <label>Slack bot token {cfg && hint(cfg.slack_bot_token_set)}<input className="input" type="password" value={form.slack_bot_token} onChange={upd("slack_bot_token")} placeholder="xoxb-..." /></label>
+          <label>Google credentials path<input className="input" value={form.google_credentials_path} onChange={upd("google_credentials_path")} placeholder="./credentials.json" /></label>
+        </div>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 16, fontSize: 13, lineHeight: 1.5 }}>
+          <input type="checkbox" style={{ marginTop: 3 }} checked={!!form.allow_cloud_fallback} onChange={(e) => setForm((f) => ({ ...f, allow_cloud_fallback: e.target.checked }))} />
+          <span><strong>Allow cloud fallback for personal work.</strong> When off, personal requests <em>fail closed</em> if the on-device model is unavailable — nothing personal goes to the cloud.</span>
+        </label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 16 }}>
+          <button className="btn btn-primary" onClick={save}>Save settings</button>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{status}</span>
+        </div>
+        <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "16px 0 0" }}>Keys are stored locally in your config file. Personal-data tasks always run on the local model; only low-sensitivity tasks may use the cloud model.</p>
       </div>
-      <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 16, fontSize: 13, lineHeight: 1.5 }}>
-        <input type="checkbox" style={{ marginTop: 3 }} checked={!!form.allow_cloud_fallback} onChange={(e) => setForm((f) => ({ ...f, allow_cloud_fallback: e.target.checked }))} />
-        <span><strong>Allow cloud fallback for personal work.</strong> When off, personal requests <em>fail closed</em> if the on-device model is unavailable — nothing personal goes to the cloud.</span>
-      </label>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 16 }}>
-        <button className="btn btn-primary" onClick={save}>Save settings</button>
-        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{status}</span>
-      </div>
-      <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "16px 0 0" }}>Keys are stored locally in your config file. Personal-data tasks always run on the local model; only low-sensitivity tasks may use the cloud model.</p>
-    </div>
 
-    <div className="card" style={{ marginTop: 16 }}>
-      <h2 className="section-title" style={{ marginTop: 0 }}>Maintenance</h2>
-      <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "0 0 12px" }}>The knowledge-graph janitor archives stale commitments and prunes old conversation turns so conflict detection stays clean. It runs automatically at startup; trigger it manually here.</p>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <button className="btn" onClick={() => runJanitor(true)} disabled={cleaning}>Preview (dry run)</button>
-        <button className="btn btn-primary" onClick={() => runJanitor(false)} disabled={cleaning}>{cleaning ? "Running…" : "Run cleanup"}</button>
-        {janitor && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{janitor.summary}{janitor.dry_run ? " (dry run)" : ""}</span>}
+      <div className="card" style={{ marginTop: 16 }}>
+        <h2 className="section-title" style={{ marginTop: 0 }}>Maintenance</h2>
+        <p style={{ color: "var(--text-muted)", fontSize: 12.5, margin: "0 0 12px" }}>The knowledge-graph janitor archives stale commitments and prunes old conversation turns so conflict detection stays clean. It runs automatically at startup; trigger it manually here.</p>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <button className="btn" onClick={() => runJanitor(true)} disabled={cleaning}>Preview (dry run)</button>
+          <button className="btn btn-primary" onClick={() => runJanitor(false)} disabled={cleaning}>{cleaning ? "Running…" : "Run cleanup"}</button>
+          {janitor && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{janitor.summary}{janitor.dry_run ? " (dry run)" : ""}</span>}
+        </div>
       </div>
-    </div>
     </>
   );
 }
@@ -752,8 +1015,8 @@ export function Evaluation({ refresh, notify }) {
   const [traces, setTraces] = useState([]);
   const [running, setRunning] = useState(false);
 
-  const loadPrivacy = () => getJSON("/api/privacy/report").then(setPrivacy).catch(() => {});
-  const loadTraces = () => getJSON("/api/eval/traces?limit=20").then((d) => setTraces(d.traces || [])).catch(() => {});
+  const loadPrivacy = () => getJSON("/api/privacy/report").then(setPrivacy).catch(() => { });
+  const loadTraces = () => getJSON("/api/eval/traces?limit=20").then((d) => setTraces(d.traces || [])).catch(() => { });
   useEffect(() => {
     getJSON("/api/eval/report").then((d) => setReport(d.report)).catch(() => setReport(null));
     loadPrivacy();
