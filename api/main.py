@@ -146,6 +146,10 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="KnowledgeMind", lifespan=lifespan)
 
+# SimChat routes (spec.md — conversational personas + conflict detection)
+from api.simchat_routes import router as _simchat_router
+app.include_router(_simchat_router)
+
 # --- access-key auth ("static auth") ----------------------------------------
 # Set ACCESS_KEY in the environment to lock the app: every /api/* AND /projmgmt
 # request must then carry the key -- as an X-Access-Key header (KM's fetch calls)

@@ -1,0 +1,1 @@
+"""simchat — SimChat application package."""
