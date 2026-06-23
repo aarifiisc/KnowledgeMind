@@ -203,13 +203,10 @@ export default function App() {
           </div>
         </header>
 
-        <div className={"content" + (view === "projadvisor" ? " content--full" : "")}>
+        <div className={"content" + (view === "projadvisor" ? " content--full" : "") + (view === "simchat" ? " content--simchat" : "")}>
           <Suspense fallback={<div className="empty">Loading…</div>}>
             <ViewComp refresh={refresh} notify={notify} />
           </Suspense>
-        </div>
-        <div className={"content" + (view === "projadvisor" ? " content--full" : "") + (view === "simchat" ? " content--simchat" : "")}>
-          <ViewComp refresh={refresh} notify={notify} />
         </div>
       </main>
 
