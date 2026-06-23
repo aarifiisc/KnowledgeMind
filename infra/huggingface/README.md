@@ -23,7 +23,7 @@ Privacy-aware personal agent (FastAPI backend + React front-end), served on port
 
 | Secret | Purpose |
 |--------|---------|
-| `ALLOWED_ORIGINS` | Comma-separated origins allowed via CORS (set to your Vercel URL if the front-end is hosted there). |
+| `ALLOWED_ORIGINS` | Comma-separated origins allowed via CORS (only needed if the front-end is hosted on a different origin). |
 | `TAVILY_API_KEY` | Web-search tool. |
 | `SLACK_BOT_TOKEN` | Live Slack connector (otherwise mock data). |
 

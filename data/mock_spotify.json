@@ -1,0 +1,19 @@
+{
+  "currently_playing": {
+    "is_playing": true,
+    "progress_ms": 94000,
+    "item": {
+      "id": "track_001",
+      "name": "[REDACTED — not forwarded to any model]",
+      "duration_ms": 213000
+    }
+  },
+  "audio_features": [
+    { "id": "track_001", "valence": 0.48, "energy": 0.52, "tempo": 112.0, "danceability": 0.55 },
+    { "id": "track_002", "valence": 0.45, "energy": 0.49, "tempo": 108.0, "danceability": 0.50 },
+    { "id": "track_003", "valence": 0.51, "energy": 0.55, "tempo": 118.0, "danceability": 0.58 },
+    { "id": "track_004", "valence": 0.44, "energy": 0.48, "tempo": 105.0, "danceability": 0.47 },
+    { "id": "track_005", "valence": 0.50, "energy": 0.53, "tempo": 115.0, "danceability": 0.53 }
+  ],
+  "session_minutes": 82
+}

@@ -62,5 +62,11 @@ rich
 pandas
 tabulate
 
+# -- MCP server (KnowledgeMind exposes tools to Hermes Agent via MCP) --------
+mcp                # includes FastMCP; python mcp_serve.py
+
+# -- Extension connectors (Strava, Apple Health, Todoist, Spotify) -----------
+requests           # HTTP client for Strava, Todoist, Spotify REST APIs
+
 # -- Build only (packaging the .exe; not needed to run from source) ----------
 pyinstaller

@@ -1,0 +1,14 @@
+{
+  "name": "mood_check",
+  "schedule": "*/30 9-21 * * *",
+  "skill": "mood_skill",
+  "platform": "discord",
+  "prompt": "Check Spotify mood signal. Cross-reference with the KnowledgeMind calendar for upcoming meetings. Surface only if: (a) the user is in a deep work session and has a meeting starting in less than 30 minutes, or (b) mood and health signals together suggest something the user would genuinely benefit from knowing. Otherwise stay completely silent.",
+  "tools": [
+    "km_spotify_mood",
+    "km_calendar",
+    "km_apple_health_summary",
+    "km_strava_summary"
+  ],
+  "quiet_hours_aware": true
+}

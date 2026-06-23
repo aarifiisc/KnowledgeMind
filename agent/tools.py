@@ -235,10 +235,8 @@ def _tool_google_calendar(params: dict[str, Any]) -> dict[str, Any]:
         body = "\n".join(lines) if lines else "(no upcoming events)"
         return {"success": True, "formatted": "Calendar events (live):\n" + body, "events": events}
 
-    # Mock fallback: events with dates computed relative to today.
-    from connectors.mock import mock_calendar_events
-    events = mock_calendar_events()
-    if not events:
+    events = _load_mock("mock_calendar.json")
+    if events is None:
         return {"success": True, "formatted": "No calendar data available (mock or live).",
                 "events": []}
     lines = [
@@ -253,7 +251,7 @@ def _tool_gmail(params: dict[str, Any]) -> dict[str, Any]:
     action = params.get("action", "list")
 
     # PRIVACY rule 6: the agent may draft but must NEVER send. Send is refused
-    # here -- the only send path is the UI confirmation gate in ui/app.py, which
+    # here -- the only send path is an explicit confirmed action in the UI, which
     # calls GmailConnector.send_message() directly. This tool never does.
     if action == "send":
         return {"success": False,
@@ -319,6 +317,42 @@ def _tool_send_message(params: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Hermes signal tools (LOCAL) -- fitness / health / tasks / music
+# Each wraps a hermes_tools function that derives local signals (raw personal
+# data never leaves the process) and records a snapshot to the connector store.
+# We only add a "formatted" summary for the LLM. They degrade to mock data when
+# the connector's credentials are absent, and never crash (dispatch is guarded).
+# ---------------------------------------------------------------------------
+
+def _hermes_signal(loader: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    result = loader()
+    if isinstance(result, dict):
+        result.setdefault("formatted", result.get("summary", "(no summary)"))
+        return result
+    return {"success": True, "formatted": str(result)}
+
+
+def _tool_strava(params: dict[str, Any]) -> dict[str, Any]:
+    from hermes_tools.strava_tool import strava_summary
+    return _hermes_signal(strava_summary)
+
+
+def _tool_apple_health(params: dict[str, Any]) -> dict[str, Any]:
+    from hermes_tools.apple_health_tool import apple_health_summary
+    return _hermes_signal(lambda: apple_health_summary(params.get("date")))
+
+
+def _tool_todoist(params: dict[str, Any]) -> dict[str, Any]:
+    from hermes_tools.todoist_tool import todoist_summary
+    return _hermes_signal(todoist_summary)
+
+
+def _tool_spotify(params: dict[str, Any]) -> dict[str, Any]:
+    from hermes_tools.spotify_tool import spotify_mood
+    return _hermes_signal(spotify_mood)
+
+
+# ---------------------------------------------------------------------------
 # Registry + dispatcher
 # ---------------------------------------------------------------------------
 
@@ -332,6 +366,10 @@ TOOL_REGISTRY: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "google_calendar": _tool_google_calendar,
     "gmail":           _tool_gmail,
     "send_message":    _tool_send_message,
+    "strava":          _tool_strava,
+    "apple_health":    _tool_apple_health,
+    "todoist":         _tool_todoist,
+    "spotify":         _tool_spotify,
 }
 
 

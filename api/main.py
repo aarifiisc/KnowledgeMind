@@ -134,7 +134,8 @@ async def access_key_guard(request: Request, call_next):
 
 
 # CORS added after the auth middleware so it stays outermost -> CORS headers are
-# present even on 401s. Set ALLOWED_ORIGINS (comma-separated) to the Vercel URL.
+# present even on 401s. ALLOWED_ORIGINS (comma-separated) only matters when the
+# front-end is served from a different origin; the HF Space serves it same-origin.
 _origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
@@ -379,6 +380,22 @@ def set_config_api(upd: ConfigUpdate) -> dict:
         for key, value in fields.items():  # keeping the demo db_path override
             setattr(cfg, key, value)
     return {"ok": True, "saved": list(fields.keys())}
+
+
+# ---------------------------------------------------------------------------
+# Connectors (Hermes signal tools) -- fitness / health / tasks / music
+# ---------------------------------------------------------------------------
+
+@app.get("/api/connectors")
+def connectors() -> dict:
+    """Latest derived signals for each Hermes connector (live or mock).
+
+    Each call runs the tool, which derives signals locally and records a
+    snapshot to the connector store. Returns per-connector results for the UI.
+    """
+    from agent.tools import dispatch_tool
+    names = ["strava", "apple_health", "todoist", "spotify"]
+    return {"connectors": {name: dispatch_tool(name, {}) for name in names}}
 
 
 # ---------------------------------------------------------------------------

@@ -75,8 +75,7 @@ def _call_groq(
     cfg = get_config()
     from groq import Groq
     client = Groq(api_key=cfg.groq_api_key)
-    # Honor the UI cloud-model dropdown: 8B for planning/critique when enabled.
-    model = cfg.cloud_model_fast if cfg.use_fast_cloud_model else cfg.cloud_model
+    model = cfg.cloud_model
 
     full_messages = [{"role": "system", "content": system}] + messages
     response = client.chat.completions.create(
@@ -661,13 +660,6 @@ class HybridMindAgent:
             # Trivial greetings answer locally for every level: no cloud planning,
             # no Groq tokens -- works even when the cloud daily limit is reached.
             if _is_greeting(user_input):
-                # Record a routing entry so the routing panel is not mysteriously
-                # empty for greetings (they answer locally with no tools).
-                routing_log.append({
-                    "step_id": 1, "tool": "single_call", "decision": "local",
-                    "privacy_score": 1.0, "complexity_score": 0.0,
-                    "reason": "Greeting / small talk answered locally; no tools needed.",
-                })
                 answer = _call_ollama(
                     history + [{"role": "user", "content": user_input}],
                     DIRECT_ANSWER_PROMPT, self.tracker, "single_call", level,

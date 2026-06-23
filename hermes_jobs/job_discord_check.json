@@ -1,0 +1,12 @@
+{
+  "name": "discord_unread_check",
+  "schedule": "0 */3 * * *",
+  "skill": "communication_skill",
+  "platform": "discord",
+  "prompt": "Check if there are unread Discord DMs or mentions the user hasn't responded to in over 4 hours. Cross-reference with KnowledgeMind calendar to see if the user was in meetings during that window. Surface only the top 2 most time-sensitive threads. If nothing qualifies, stay silent.",
+  "tools": [
+    "km_calendar",
+    "km_query_kg"
+  ],
+  "quiet_hours_aware": true
+}

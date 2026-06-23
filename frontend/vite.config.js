@@ -2,8 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Dev server proxies /api to the FastAPI backend so `npm run dev` works against
-// `python launcher.py`. Production build (npm run build -> dist/) is served by
-// FastAPI itself (single deploy) or by Vercel (pointing at VITE_API_BASE).
+// `python launcher.py`. The production build (npm run build -> dist/) is served
+// by FastAPI itself (single deploy — e.g. the HF Space).
 export default defineConfig({
   plugins: [react()],
   server: {

@@ -172,6 +172,55 @@ function buildGraphSVG(commitments, conflicts) {
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin meet">${edges}${conflictEdges}${nodes}</svg>`;
 }
 
+/* ---- Connectors (Hermes signal sources) ---------------------------------- */
+const CONN_META = {
+  strava: { label: "Strava", icon: "🏃", sub: "Fitness & activity" },
+  apple_health: { label: "Apple Health", icon: "❤️", sub: "Sleep & recovery" },
+  todoist: { label: "Todoist", icon: "✓", sub: "Task load" },
+  spotify: { label: "Spotify", icon: "🎵", sub: "Listening mood" },
+};
+const CONN_ORDER = ["strava", "apple_health", "todoist", "spotify"];
+const CONN_HIDE = ["success", "source", "formatted", "summary", "available"];
+
+export function Connectors({ refresh }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    getJSON("/api/connectors").then((d) => setData(d.connectors || {})).catch(() => setData({}));
+  }, [refresh]);
+
+  if (!data) return <Empty big="⏳" title="Loading connectors…" sub="" />;
+
+  return (
+    <>
+      <div className="privacy-banner">{ShieldIcon}<div><strong>These signals are derived on-device.</strong> Raw GPS, biometrics, and track names never leave your machine — only summary signals + their routing stays LOCAL.</div></div>
+      <div className="conn-grid">
+        {CONN_ORDER.map((k) => {
+          const c = data[k] || {};
+          const meta = CONN_META[k];
+          const signals = Object.entries(c).filter(([key, v]) => !CONN_HIDE.includes(key) && typeof v !== "object");
+          return (
+            <div className="card conn-card" key={k}>
+              <div className="conn-head">
+                <span className="conn-icon">{meta.icon}</span>
+                <div><div className="conn-title">{meta.label}</div><div className="conn-sub">{meta.sub}</div></div>
+                <span className={"chip " + (c.source === "live" ? "chip-live" : "chip-demo")} style={{ marginLeft: "auto" }}>{c.source === "live" ? "● live" : "mock"}</span>
+              </div>
+              <div className="conn-summary">{c.summary || c.formatted || "(no data)"}</div>
+              {signals.length > 0 && (
+                <div className="conn-signals">
+                  {signals.slice(0, 6).map(([key, val]) => (
+                    <div className="conn-signal" key={key}><span className="k">{key.replace(/_/g, " ")}</span><span className="v">{String(val)}</span></div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 /* ---- Assistant ----------------------------------------------------------- */
 export function Assistant() {
   const [msgs, setMsgs] = useState([{ role: "bot", text: "Hi! I'm KnowledgeMind. Ask about your schedule, or try “Do I have any conflicts this week?” Personal-data tasks always run on-device." }]);

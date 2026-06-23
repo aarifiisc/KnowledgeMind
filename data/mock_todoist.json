@@ -1,0 +1,68 @@
+[
+  {
+    "id": "7001",
+    "content": "Review PR #42 — auth refactor",
+    "description": "Left comments on lines 88-102; needs second pass after Arif updates",
+    "project_id": "proj_work",
+    "priority": 4,
+    "due": { "date": "2026-06-19", "string": "Jun 19" },
+    "labels": ["work", "code-review"],
+    "is_completed": false,
+    "created_at": "2026-06-17T09:00:00Z"
+  },
+  {
+    "id": "7002",
+    "content": "Reply to Priya's email re: design doc",
+    "description": "",
+    "project_id": "proj_work",
+    "priority": 3,
+    "due": { "date": "2026-06-20", "string": "Jun 20" },
+    "labels": ["work", "email"],
+    "is_completed": false,
+    "created_at": "2026-06-18T14:30:00Z"
+  },
+  {
+    "id": "7003",
+    "content": "Buy groceries",
+    "description": "Milk, eggs, vegetables",
+    "project_id": "proj_personal",
+    "priority": 2,
+    "due": { "date": "2026-06-21", "string": "Today" },
+    "labels": ["personal"],
+    "is_completed": false,
+    "created_at": "2026-06-20T10:00:00Z"
+  },
+  {
+    "id": "7004",
+    "content": "Submit IISc assignment — Module 4",
+    "description": "Deadline was yesterday. Need to email prof.",
+    "project_id": "proj_iisc",
+    "priority": 4,
+    "due": { "date": "2026-06-20", "string": "Jun 20" },
+    "labels": ["iisc", "urgent"],
+    "is_completed": false,
+    "created_at": "2026-06-15T08:00:00Z"
+  },
+  {
+    "id": "7005",
+    "content": "Update KnowledgeMind spec with reviewer feedback",
+    "description": "",
+    "project_id": "proj_iisc",
+    "priority": 3,
+    "due": { "date": "2026-06-21", "string": "Today" },
+    "labels": ["iisc", "project"],
+    "is_completed": false,
+    "created_at": "2026-06-19T16:00:00Z"
+  },
+  {
+    "id": "7006",
+    "content": "Pay electricity bill",
+    "description": "",
+    "project_id": "proj_personal",
+    "priority": 2,
+    "due": { "date": "2026-06-22", "string": "Tomorrow" },
+    "labels": ["personal"],
+    "is_completed": false,
+    "created_at": "2026-06-19T11:00:00Z"
+  }
+]

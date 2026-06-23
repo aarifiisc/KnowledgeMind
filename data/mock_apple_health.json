@@ -1,0 +1,13 @@
+{
+  "date": "2026-06-21",
+  "steps": 6840,
+  "sleep_hours": 6.1,
+  "sleep_quality": "fair",
+  "resting_hr": 61,
+  "hrv_ms": 38.5,
+  "active_energy_kcal": 420,
+  "stand_hours": 10,
+  "exercise_minutes": 32,
+  "respiratory_rate": 14.2,
+  "blood_oxygen_pct": 98.0
+}

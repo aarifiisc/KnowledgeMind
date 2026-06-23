@@ -68,5 +68,4 @@ Thumbs.db
 # ---------------------------------------------------------------------------
 node_modules/
 frontend/dist/
-.vercel/
 npm-debug.log*
