@@ -13,7 +13,6 @@ are consumed directly by their tools until the live connectors land.
 
 from __future__ import annotations
 
-import datetime as dt
 import json
 from pathlib import Path
 from typing import Any, Optional
@@ -24,27 +23,6 @@ from kg.schema import CommitmentNode
 
 DEFAULT_MESSAGES_FILE: str = "mock_messages.json"
 DEFAULT_CALENDAR_FILE: str = "mock_calendar.json"
-
-
-def _relative_ts(day_offset: int, time_str: str) -> float:
-    """
-    Epoch seconds for `time_str` (HH:MM) on (today + day_offset days). Mock data
-    uses relative offsets so demo events are always anchored to the CURRENT date.
-    """
-    try:
-        hour, minute = (int(part) for part in time_str.split(":"))
-    except (ValueError, AttributeError):
-        hour, minute = 9, 0
-    target = dt.datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
-    return (target + dt.timedelta(days=int(day_offset))).timestamp()
-
-
-def _record_ts(record: dict, offset_key: str, time_key: str, iso_key: str) -> Optional[float]:
-    """Resolve a timestamp from relative (day_offset+time) or ISO fields."""
-    if offset_key in record:
-        return _relative_ts(record[offset_key], record.get(time_key, "09:00"))
-    iso_value = record.get(iso_key)
-    return parse_timestamp(iso_value) if iso_value else None
 
 
 class MockConnector(BaseConnector):
@@ -79,9 +57,8 @@ class MockConnector(BaseConnector):
         """Return mock messages with timestamp >= since_ts, oldest-first."""
         messages: list[RawMessage] = []
         for record in self._load_records():
-            # Relative (day_offset+time) anchored to today, or legacy ISO/epoch.
-            timestamp = _record_ts(record, "day_offset", "time", "timestamp")
-            if timestamp is None or timestamp < since_ts:
+            timestamp = parse_timestamp(record.get("timestamp", 0))
+            if timestamp < since_ts:
                 continue
             messages.append(RawMessage(
                 source=self.source_override or record.get("source", "mock"),
@@ -105,45 +82,22 @@ class MockConnector(BaseConnector):
 
 def _calendar_record_to_commitment(record: dict) -> Optional[CommitmentNode]:
     """Map a mock_calendar.json record to a CommitmentNode (HARD by default)."""
-    start_ts = _record_ts(record, "day_offset", "start_time", "start")
+    start_ts = parse_timestamp(record.get("start", ""))
     if not start_ts:
         return None
-    end_ts = _record_ts(record, "day_offset", "end_time", "end")
+    end_value = record.get("end")
     summary = record.get("summary", "(no title)")
     return CommitmentNode(
         id=0,
-        person_name=record.get("person") or "(self)",
+        person_name="(self)",
         description=summary,
         start_ts=start_ts,
-        end_ts=end_ts,
+        end_ts=parse_timestamp(end_value) if end_value else None,
         source="calendar",
         commitment_type=record.get("commitment_type", "HARD"),
         confidence=1.0,
         raw_text=summary,
     )
-
-
-def mock_calendar_events() -> list[dict]:
-    """
-    Calendar records with a computed, human-readable `start` (and `end`) anchored
-    to today, for the google_calendar tool's display fallback.
-    """
-    path = DATA_DIR / DEFAULT_CALENDAR_FILE
-    if not path.exists():
-        return []
-    try:
-        records = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return []
-    events: list[dict] = []
-    for record in records:
-        start_ts = _record_ts(record, "day_offset", "start_time", "start")
-        if start_ts is None:
-            continue
-        display = dict(record)
-        display["start"] = dt.datetime.fromtimestamp(start_ts).strftime("%Y-%m-%d %H:%M")
-        events.append(display)
-    return events
 
 
 class MockCalendarSource:

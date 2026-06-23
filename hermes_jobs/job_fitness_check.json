@@ -1,0 +1,12 @@
+{
+  "name": "fitness_check",
+  "schedule": "0 17 * * *",
+  "skill": "fitness_skill",
+  "platform": "discord",
+  "prompt": "Check Strava and Apple Health. If the user hasn't been active today and recovery metrics are reasonable, suggest a short activity. If recovery metrics (HRV, resting HR) or last night's sleep suggest rest, do not push activity — suggest rest instead. If the user already ran today, stay silent.",
+  "tools": [
+    "km_strava_summary",
+    "km_apple_health_summary"
+  ],
+  "quiet_hours_aware": true
+}

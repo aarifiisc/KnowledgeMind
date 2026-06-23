@@ -48,17 +48,14 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 
 @dataclass
 class AppConfig:
-    # LLM
-    local_model: str = "qwen2.5:3b"
+    # LLM — base
+    local_model: str = "qwen2.5:3b"            # lightweight tasks, greetings
+    local_model_reasoning: str = "nous-hermes3" # personal data reasoning (extension)
     ollama_base_url: str = "http://localhost:11434"
     cloud_model: str = "llama-3.3-70b-versatile"
     cloud_model_fast: str = "llama-3.1-8b-instant"
-    # When True, cloud planning/critique uses cloud_model_fast (8B) instead of
-    # cloud_model (70B): far higher free-tier token budget, slightly lower
-    # quality. Defaults to True (8B) so the daily limit is not hit easily.
-    use_fast_cloud_model: bool = True
 
-    # API keys
+    # API keys — base
     groq_api_key: str = ""
     tavily_api_key: str = ""
     slack_bot_token: str = ""
@@ -74,12 +71,65 @@ class AppConfig:
 
     # Storage
     db_path: str = str(CONFIG_DIR / "knowledgemind.db")
+    connector_db_path: str = str(CONFIG_DIR / "connectors.db")
     alerts_log_path: str = str(CONFIG_DIR / "alerts.jsonl")
     chroma_persist_dir: str = str(CONFIG_DIR / "chroma_db")
     max_context_tokens: int = 4000
 
     # State
     setup_complete: bool = False
+
+    # -------------------------------------------------------------------------
+    # Extension: MCP server
+    # -------------------------------------------------------------------------
+    km_mcp_port: int = 6789
+
+    # -------------------------------------------------------------------------
+    # Extension: Strava
+    # -------------------------------------------------------------------------
+    strava_client_id: str = ""
+    strava_client_secret: str = ""
+    strava_access_token: str = ""
+    strava_refresh_token: str = ""
+    strava_gap_threshold_days: int = 2          # alert if no activity for N days
+    strava_weekly_km_avg: float = 0.0           # rolling 4-week average (learned)
+
+    # -------------------------------------------------------------------------
+    # Extension: Apple Health
+    # -------------------------------------------------------------------------
+    # Path where the iOS Shortcut drops the daily JSON export via iCloud Drive.
+    apple_health_export_path: str = str(
+        Path.home() / "Library" / "Mobile Documents"
+        / "com~apple~CloudDocs" / "HealthExport"
+    )
+    apple_health_hrv_baseline: float = 0.0      # rolling 30-day median (learned)
+    apple_health_rhr_baseline: float = 0.0      # resting heart rate baseline (learned)
+
+    # -------------------------------------------------------------------------
+    # Extension: Todoist
+    # -------------------------------------------------------------------------
+    todoist_api_token: str = ""
+
+    # -------------------------------------------------------------------------
+    # Extension: Spotify
+    # -------------------------------------------------------------------------
+    spotify_client_id: str = ""
+    spotify_client_secret: str = ""
+    spotify_access_token: str = ""
+    spotify_refresh_token: str = ""
+
+    # -------------------------------------------------------------------------
+    # Extension: Discord
+    # -------------------------------------------------------------------------
+    discord_bot_token: str = ""
+    discord_allowed_user_ids: str = ""          # comma-separated Discord user IDs
+    discord_dm_only: bool = True
+
+    # -------------------------------------------------------------------------
+    # Extension: preemptive agent behaviour
+    # -------------------------------------------------------------------------
+    preemptive_quiet_hours_start: int = 22      # no Discord DMs after 10 PM
+    preemptive_quiet_hours_end: int = 8         # no Discord DMs before 8 AM
 
     def is_ready(self) -> bool:
         """True if minimum config for operation is present."""
@@ -96,6 +146,7 @@ class AppConfig:
 # Per-field env var names, checked in order (first non-empty wins). The plain
 # names match .env.example; the KM_* names are kept for backward compatibility.
 _ENV_OVERRIDES: dict[str, tuple[str, ...]] = {
+    # base
     "groq_api_key":            ("GROQ_API_KEY", "KM_GROQ_API_KEY"),
     "tavily_api_key":          ("TAVILY_API_KEY", "KM_TAVILY_API_KEY"),
     "slack_bot_token":         ("SLACK_BOT_TOKEN", "KM_SLACK_TOKEN"),
@@ -103,6 +154,18 @@ _ENV_OVERRIDES: dict[str, tuple[str, ...]] = {
     "local_model":             ("KM_LOCAL_MODEL",),
     "ollama_base_url":         ("KM_OLLAMA_URL",),
     "db_path":                 ("KM_DB_PATH",),
+    # extension
+    "strava_client_id":        ("STRAVA_CLIENT_ID",),
+    "strava_client_secret":    ("STRAVA_CLIENT_SECRET",),
+    "strava_access_token":     ("STRAVA_ACCESS_TOKEN",),
+    "strava_refresh_token":    ("STRAVA_REFRESH_TOKEN",),
+    "todoist_api_token":       ("TODOIST_API_TOKEN",),
+    "spotify_client_id":       ("SPOTIFY_CLIENT_ID",),
+    "spotify_client_secret":   ("SPOTIFY_CLIENT_SECRET",),
+    "spotify_access_token":    ("SPOTIFY_ACCESS_TOKEN",),
+    "spotify_refresh_token":   ("SPOTIFY_REFRESH_TOKEN",),
+    "discord_bot_token":       ("DISCORD_BOT_TOKEN",),
+    "connector_db_path":       ("KM_CONNECTOR_DB_PATH",),
 }
 
 

@@ -1,0 +1,78 @@
+# cli-config.yaml
+# Hermes Agent configuration for KnowledgeMind extension
+#
+# Copy this file to the Hermes Agent config directory before running:
+#   cp cli-config.yaml ~/.hermes/cli-config.yaml
+#
+# Environment variables required (set in .env or shell):
+#   DISCORD_BOT_TOKEN   — Discord bot token from https://discord.com/developers
+#   OLLAMA_BASE_URL     — defaults to http://localhost:11434
+
+# -------------------------------------------------------------------------
+# Model routing
+# -------------------------------------------------------------------------
+
+# Default provider: local Ollama for ALL personal data reasoning.
+# Nous Hermes 3 is instruction-tuned and runs fully offline.
+provider: ollama
+model: nous-hermes3
+
+# Optional cloud fallback — only for explicitly low-privacy tasks.
+# Leave commented out to keep everything fully local (recommended).
+# cloud_provider: groq
+# cloud_model: llama-3.3-70b-versatile
+# cloud_tools:        # tools allowed to trigger cloud provider
+#   - web_search      # only this; all others remain local
+
+# -------------------------------------------------------------------------
+# Discord gateway
+# -------------------------------------------------------------------------
+
+gateway:
+  platforms:
+    - discord
+  allowed_users:
+    # Replace with your Discord user ID (Settings → Advanced → Developer Mode → right-click username → Copy ID)
+    - "YOUR_DISCORD_USER_ID"
+  dm_only: true     # only respond to DMs — do not participate in server channels
+
+# -------------------------------------------------------------------------
+# MCP servers
+# -------------------------------------------------------------------------
+
+mcp_servers:
+  - name: knowledgemind
+    url: http://localhost:6789/mcp
+    description: >
+      Personal knowledge graph, calendar, commitment, and connector tools.
+      Privacy router enforced inside MCP server — all tools always LOCAL.
+
+# -------------------------------------------------------------------------
+# Cron jobs
+# -------------------------------------------------------------------------
+# Jobs are defined in hermes_jobs/*.json and loaded by Hermes on startup.
+# See hermes_jobs/ directory for the five POC job definitions.
+jobs_dir: hermes_jobs
+
+# -------------------------------------------------------------------------
+# Skills (context files for cron and chat sessions)
+# -------------------------------------------------------------------------
+skills_dir: hermes_skills
+
+# -------------------------------------------------------------------------
+# Memory and user modeling
+# -------------------------------------------------------------------------
+
+# Hermes builds USER.md and MEMORY.md automatically from sessions.
+# Point to a persistent directory so state survives restarts.
+data_dir: ~/.hermes/knowledgemind
+
+# -------------------------------------------------------------------------
+# Quiet hours (UTC — convert to your local timezone)
+# -------------------------------------------------------------------------
+# Cron jobs that check quiet hours read preemptive_quiet_hours_* from
+# KnowledgeMind AppConfig (config/store.py). These values are shown here
+# for documentation only — set them via KM_PREEMPTIVE_QUIET_HOURS_START
+# and KM_PREEMPTIVE_QUIET_HOURS_END environment variables.
+#
+# Default: no preemptive messages sent between 22:00 and 08:00 local time.

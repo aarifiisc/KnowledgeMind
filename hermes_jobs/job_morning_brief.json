@@ -1,0 +1,15 @@
+{
+  "name": "morning_brief",
+  "schedule": "0 8 * * *",
+  "skill": "morning_brief_skill",
+  "platform": "discord",
+  "prompt": "Check today's fitness signals (Strava, Apple Health), task load (Todoist), and calendar conflicts (KnowledgeMind). Give a concise morning briefing only if there is something actionable. Maximum 3 bullet points. If everything looks normal, one sentence is enough.",
+  "tools": [
+    "km_apple_health_summary",
+    "km_strava_summary",
+    "km_todoist_summary",
+    "km_calendar",
+    "km_conflict_edges"
+  ],
+  "quiet_hours_aware": true
+}

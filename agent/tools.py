@@ -235,10 +235,8 @@ def _tool_google_calendar(params: dict[str, Any]) -> dict[str, Any]:
         body = "\n".join(lines) if lines else "(no upcoming events)"
         return {"success": True, "formatted": "Calendar events (live):\n" + body, "events": events}
 
-    # Mock fallback: events with dates computed relative to today.
-    from connectors.mock import mock_calendar_events
-    events = mock_calendar_events()
-    if not events:
+    events = _load_mock("mock_calendar.json")
+    if events is None:
         return {"success": True, "formatted": "No calendar data available (mock or live).",
                 "events": []}
     lines = [

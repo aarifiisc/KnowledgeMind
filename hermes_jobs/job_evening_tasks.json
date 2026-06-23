@@ -1,0 +1,13 @@
+{
+  "name": "evening_tasks",
+  "schedule": "30 18 * * *",
+  "skill": "tasks_skill",
+  "platform": "discord",
+  "prompt": "Check Todoist for unfinished tasks from today and any overdue items. If there are items worth surfacing, send a brief summary (maximum 3 items) and ask if the user wants to reschedule anything. If everything was completed or there is nothing due, stay silent.",
+  "tools": [
+    "km_todoist_summary",
+    "km_todoist_tasks",
+    "km_calendar"
+  ],
+  "quiet_hours_aware": true
+}
