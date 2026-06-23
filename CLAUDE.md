@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What this is
 KnowledgeMind — a privacy-aware personal AI agent. A **FastAPI** backend (`api/main.py`) serves a **React** front-end (`frontend/`) and wraps the engine: a SQLite + NetworkX personal knowledge graph, a LangGraph background monitor, a privacy router (LOCAL vs CLOUD), an L1/L2/L3 ReAct agent, and a set of connectors. Runs CPU-only and degrades to mock data when no API keys are set.
@@ -24,7 +24,15 @@ cd frontend && npm run dev                    # Vite on :5173 (proxies /api → 
 # Tests
 .venv/bin/python benchmark.py --mode static   # offline routing/privacy contract (target 100%)
 .venv/bin/python demo_conflicts.py            # end-to-end conflict demo (offline)
-.venv/bin/python -m kg.graph                  # per-module smoke test (each module has one)
+.venv/bin/python -m kg.graph                  # per-module smoke test (each module has one;
+                                               # see .github/workflows/ci.yml for the full list)
+.venv/bin/python -m runtime.tests             # proactive runtime unit tests (offline, stub LLM)
+
+# Eval harness (Stream 4 — agent quality/routing/latency)
+.venv/bin/python -m eval.runner                          # offline stub agent + stub judge
+.venv/bin/python -m eval.runner --live                   # live agent (Ollama/Groq), stub judge
+.venv/bin/python -m eval.runner --live --judge groq       # live agent + Groq judge
+.venv/bin/python -m eval.runner --case G3 -v               # single golden case, verbose
 ```
 
 ## Architecture
@@ -44,6 +52,11 @@ extraction/            → spaCy NER + few-shot commitment extractor + timeparse
 connectors/            → Slack/Calendar/Gmail (BaseConnector) + Hermes signal sources (below)
 tools/rag.py           → ChromaDB RAG over local documents
 memory/memory_manager.py → per-session history (turns table)
+config/store.py        → single source of truth for user config; priority is
+                         env var override > config.json > hardcoded default (no .env in prod)
+eval/                  → Stream-4 eval harness: runner (golden-set scoring) + judge
+                         (stub/Groq LLM-as-judge) + metrics (routing accuracy, latency, TPR/TNR)
+                         + tracer (canonical run() trace records, additive to Contract 2)
 projmgmt/              → mounted sub-app at /projmgmt ("Project Advisor": SOW → KG + rules → chat)
 ```
 
@@ -88,6 +101,11 @@ Every tool: `dict -> {"success": bool, "formatted": str, ...}`, never raises (`d
 
 ### Knowledge graph
 Tables: `persons`, `commitments`, `conflicts`, `turns`, `rag_documents`. Commitment types HARD/SOFT/TENTATIVE. Conflict detection is **person-agnostic** (the user's whole timeline) and skips TENTATIVE. Open the DB via `get_db_connection(cfg.db_path)` (idempotent `init_db`).
+
+### Unrelated subproject (`projmgmt/`)
+`projmgmt/` is a separate, standalone app (a SoW-driven team-management chatbot) with its own
+`CLAUDE.md`/`SPEC.md`, FastAPI backend, and frontend. It does not share code or runtime with the
+KnowledgeMind engine above — read `projmgmt/CLAUDE.md` before working inside it.
 
 ## Deployment
 `infra/` holds the Dockerfile (HF Spaces, port 7860) + a deploy guide; `.github/workflows/` has CI + the HF Spaces deploy. Set `ACCESS_KEY` + `GROQ_API_KEY` as Space secrets.

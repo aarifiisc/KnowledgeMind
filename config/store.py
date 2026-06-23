@@ -198,7 +198,10 @@ def load_config() -> AppConfig:
         try:
             data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
             for key, value in data.items():
-                if hasattr(cfg, key):
+                # Skip empty-string overrides so a blank field in config.json
+                # (e.g. from an older save) doesn't clobber a non-empty default
+                # like db_path with an unusable value.
+                if hasattr(cfg, key) and value != "":
                     setattr(cfg, key, value)
         except (json.JSONDecodeError, OSError) as e:
             print(f"[Config] Warning: could not read config.json: {e}. Using defaults.")
