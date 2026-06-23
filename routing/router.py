@@ -53,6 +53,11 @@ ALWAYS_LOCAL_TOOLS: frozenset[str] = frozenset({
     "gmail",
     "send_message",
     "code_execution",
+    # Hermes signal tools -- derived from personal health/fitness/tasks/music.
+    "strava",
+    "apple_health",
+    "todoist",
+    "spotify",
 })
 
 # Minimum privacy score a tool can ever have (floor), regardless of task text.
@@ -66,6 +71,11 @@ TOOL_PRIVACY_FLOORS: dict[str, float] = {
     "code_execution":  0.70,
     "rag_query":       0.70,
     "web_search":      0.05,
+    # Hermes signal tools -- personal biometrics/activity, pinned LOCAL.
+    "apple_health":    0.98,
+    "strava":          0.95,
+    "spotify":         0.95,
+    "todoist":         0.90,
 }
 
 # Privacy score at or above which a step is forced LOCAL (SPEC privacy rule 3).

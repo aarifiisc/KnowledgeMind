@@ -14,8 +14,6 @@ accessible from macOS without a companion iOS app.  The POC approach:
 
 This connector reads the latest such file.  All arithmetic is local;
 raw biometric values never leave the device (privacy floor 0.98).
-
-See docs/apple_health_shortcut.md for the Shortcut recipe.
 """
 
 from __future__ import annotations

@@ -36,6 +36,10 @@ Available tools:
 - web_search      : search the web for public information (CLOUD-safe)
 - rag_query       : search the user's uploaded documents (LOCAL)
 - code_execution  : run a short Python snippet (LOCAL)
+- strava          : recent fitness / activity signals (LOCAL)
+- apple_health    : sleep / recovery / health signals (LOCAL)
+- todoist         : task load — overdue & due today (LOCAL)
+- spotify         : listening mood / focus signals (LOCAL)
 
 Decide whether you can answer directly or need exactly ONE tool.
 
@@ -68,6 +72,10 @@ Available tools:
 - code_execution : run Python code locally (always LOCAL)
 - rag_query      : query local documents (always LOCAL — personal data)
 - send_message   : send a Slack message (always LOCAL — personal data)
+- strava         : fitness/activity signals from Strava (always LOCAL — personal data)
+- apple_health   : sleep/recovery/health signals (always LOCAL — personal data)
+- todoist        : task-load signals — overdue & due today (always LOCAL — personal data)
+- spotify        : listening mood/focus signals (always LOCAL — personal data)
 
 IMPORTANT — privacy rules:
 - KG data, calendar data, email content MUST stay local. Do NOT describe their content in your plan.
@@ -110,6 +118,10 @@ code_execution:  {"code": "python code string", "description": "what it does"}
 google_calendar: {"action": "list|create|free_slots", "query": "...", "event": {}}
 gmail:           {"action": "list|read|draft|send", "query": "...", "message": {}}
 send_message:    {"channel": "channel name", "text": "message text"}
+strava:          {}
+apple_health:    {"date": "YYYY-MM-DD (optional)"}
+todoist:         {}
+spotify:         {}
 
 Output ONLY valid JSON with this exact structure:
 {"tool": "tool_name", "parameters": { ... }}
@@ -171,7 +183,8 @@ If another tool call is needed, respond:
 }
 
 Available tools: query_kg, find_free_slots, conflict_edges, google_calendar,
-                 gmail, web_search, code_execution, rag_query, send_message
+                 gmail, web_search, code_execution, rag_query, send_message,
+                 strava, apple_health, todoist, spotify
 
 Privacy rules (same as always):
 - query_kg, find_free_slots, google_calendar, gmail, rag_query → always LOCAL

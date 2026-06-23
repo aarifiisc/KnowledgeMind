@@ -382,6 +382,22 @@ def set_config_api(upd: ConfigUpdate) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Connectors (Hermes signal tools) -- fitness / health / tasks / music
+# ---------------------------------------------------------------------------
+
+@app.get("/api/connectors")
+def connectors() -> dict:
+    """Latest derived signals for each Hermes connector (live or mock).
+
+    Each call runs the tool, which derives signals locally and records a
+    snapshot to the connector store. Returns per-connector results for the UI.
+    """
+    from agent.tools import dispatch_tool
+    names = ["strava", "apple_health", "todoist", "spotify"]
+    return {"connectors": {name: dispatch_tool(name, {}) for name in names}}
+
+
+# ---------------------------------------------------------------------------
 # Static front-end (built React SPA in frontend/dist)
 # ---------------------------------------------------------------------------
 
