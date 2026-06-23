@@ -11,11 +11,11 @@ export const getKey = () => localStorage.getItem(KEY_STORAGE) || "";
 export const setKey = (k) => {
   localStorage.setItem(KEY_STORAGE, k);
   // Mirror to a same-origin cookie so the mounted projmgmt iframe is authorized.
-  document.cookie = `km_access=${k}; path=/; SameSite=Strict; max-age=31536000`;
+  document.cookie = `km_access=${k}; path=/; SameSite=Lax; max-age=31536000`;
 };
 export const clearKey = () => {
   localStorage.removeItem(KEY_STORAGE);
-  document.cookie = "km_access=; path=/; SameSite=Strict; max-age=0";
+  document.cookie = "km_access=; path=/; SameSite=Lax; max-age=0";
 };
 
 let onUnauthorized = () => {};

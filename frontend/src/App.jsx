@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from "react";
-import { getJSON, postJSON, getKey, validateKey, setUnauthorizedHandler, clearKey } from "./api";
+import { getJSON, postJSON, getKey, setKey, validateKey, setUnauthorizedHandler, clearKey } from "./api";
 import Login from "./Login.jsx";
 import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation, Proactive } from "./views.jsx";
 // Project Advisor pulls in cytoscape — lazy-load it so it stays out of the main bundle.
@@ -93,7 +93,7 @@ export default function App() {
     setUnauthorizedHandler(() => setAuthed(false));
     (async () => {
       const k = getKey();
-      if (k && (await validateKey(k))) setAuthed(true);
+      if (k && (await validateKey(k))) { setKey(k); setAuthed(true); }  // re-set cookie (refresh SameSite/expiry)
       setBooting(false);
     })();
   }, []);
