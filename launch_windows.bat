@@ -76,9 +76,26 @@ if errorlevel 1 (
 :: ── Create data directory ─────────────────────────────────────────────────
 if not exist "%SCRIPT_DIR%data" mkdir "%SCRIPT_DIR%data"
 
+:: ── Front-end build (React SPA served by FastAPI) ──────────────────────────
+:: FastAPI serves frontend\dist; build it once with Node if it is missing.
+if not exist "%SCRIPT_DIR%frontend\dist" (
+    where npm >nul 2>&1
+    if errorlevel 1 (
+        echo [WARN] npm not found and frontend\dist missing - the web UI will not load.
+        echo        Install Node.js 20+ from https://nodejs.org, then re-run.
+    ) else (
+        echo [INFO] Building front-end (first run, may take a minute)...
+        pushd "%SCRIPT_DIR%frontend"
+        call npm install
+        call npm run build
+        popd
+        echo [OK] Front-end built
+    )
+)
+
 :: ── Launch ────────────────────────────────────────────────────────────────
 echo.
-echo [INFO] Starting KnowledgeMind at http://127.0.0.1:7860 ...
+echo [INFO] Starting KnowledgeMind at http://127.0.0.1:8000 ...
 echo        Your browser will open automatically.
 echo        Close this window to stop the app.
 echo.

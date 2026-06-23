@@ -2,61 +2,84 @@
 # ------------------
 # PyInstaller spec for building KnowledgeMind.exe on Windows.
 #
-# Usage:
+# This packages the FastAPI backend (api.main:app) + the built React SPA
+# (frontend/dist) into a single distributable. Ollama is NOT bundled (users
+# install it separately from ollama.com).
+#
+# Prerequisites (run BEFORE pyinstaller):
 #   pip install pyinstaller
-#   pyinstaller build_windows.spec
+#   pip install -r requirements.txt
+#   python -m spacy download en_core_web_sm
+#   cd frontend && npm install && npm run build && cd ..   # builds frontend/dist
 #
-# Output: dist/KnowledgeMind/KnowledgeMind.exe  (folder bundle)
-#         dist/KnowledgeMind.exe                 (single file — slower startup)
+# Usage:
+#   pyinstaller build_windows.spec --clean --noconfirm
 #
-# Run with --onedir for faster startup, --onefile for single portable exe.
-# Recommended: --onedir (bundled in a folder)
+# Output: dist/KnowledgeMind/KnowledgeMind.exe  (folder bundle, --onedir)
 
-import sys
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-block_cipher = None
-
-# Collect data files from packages that use them at runtime
+# ---------------------------------------------------------------------------
+# Data files (non-Python assets read at runtime). All app paths are resolved
+# relative to each module's __file__, so the bundled layout must mirror the
+# source tree under _MEIPASS (e.g. api/main.py -> ../frontend/dist).
+# ---------------------------------------------------------------------------
 datas = []
-datas += collect_data_files("gradio")
-datas += collect_data_files("gradio_client")
 datas += collect_data_files("spacy")
-datas += collect_data_files("en_core_web_sm")   # spaCy English model
-datas += collect_data_files("pyvis")
+datas += collect_data_files("en_core_web_sm")     # spaCy English model
+datas += collect_data_files("chromadb")           # RAG vector store assets
+datas += collect_data_files("eval")               # eval golden fixtures, if any
 
-# Include our own data directory (mock data, etc.)
-datas += [("data", "data")]
+datas += [
+    ("frontend/dist", "frontend/dist"),   # built React SPA served by FastAPI
+    ("hermes_jobs", "hermes_jobs"),       # proactive runtime job specs (read at runtime)
+    ("hermes_skills", "hermes_skills"),   # proactive runtime skills (read at runtime)
+    ("data", "data"),                     # mock data for offline mode
+    ("projmgmt", "projmgmt"),             # Project Advisor sub-app: imported dynamically
+                                          # (sys.path.insert + `import main`), so PyInstaller
+                                          # cannot trace it -- ship the whole tree as data.
+]
 
-# Hidden imports that PyInstaller misses via static analysis
+# ---------------------------------------------------------------------------
+# Hidden imports. uvicorn loads the app by the STRING "api.main:app", so the
+# entire KM package graph is invisible to static analysis and must be forced in
+# explicitly -- without this the exe builds but fails to start.
+# ---------------------------------------------------------------------------
 hiddenimports = []
-hiddenimports += collect_submodules("gradio")
-hiddenimports += collect_submodules("langchain")
-hiddenimports += collect_submodules("langgraph")
-hiddenimports += collect_submodules("langchain_groq")
-hiddenimports += collect_submodules("langchain_community")
-hiddenimports += collect_submodules("spacy")
-hiddenimports += collect_submodules("networkx")
-hiddenimports += collect_submodules("sentence_transformers")
+
+# KM engine packages (reached only via the uvicorn string target)
+for _km_pkg in (
+    "api", "agent", "kg", "routing", "monitor", "extraction", "connectors",
+    "proactive", "memory", "config", "tools", "guardrails", "eval", "simchat",
+    "hermes_tools",
+):
+    hiddenimports += collect_submodules(_km_pkg)
+
+# Web stack + ML libs with dynamic / lazy submodules
+for _dep_pkg in (
+    "uvicorn", "fastapi", "starlette",
+    "langchain", "langgraph", "langchain_groq", "langchain_ollama",
+    "langchain_community", "spacy", "networkx", "sentence_transformers",
+    "chromadb",
+):
+    hiddenimports += collect_submodules(_dep_pkg)
+
 hiddenimports += [
-    "sqlite3",
-    "json",
-    "pathlib",
-    "threading",
-    "webbrowser",
-    "urllib.request",
-    "urllib.error",
-    "groq",
-    "tavily",
-    "duckduckgo_search",
+    # stdlib PyInstaller sometimes drops
+    "sqlite3", "json", "pathlib", "threading", "webbrowser", "asyncio",
+    "urllib.request", "urllib.error", "email.mime.text",
+    # uvicorn picks these by name at runtime
+    "anyio", "h11", "uvicorn.lifespan.on", "uvicorn.loops.auto",
+    "uvicorn.protocols.http.auto", "uvicorn.protocols.websockets.auto",
+    # libraries imported lazily / inside functions
+    "groq", "ollama", "tavily", "duckduckgo_search", "pypdf", "hnswlib",
     "slack_sdk",
-    "google.auth",
-    "google.oauth2.credentials",
-    "google_auth_oauthlib.flow",
-    "googleapiclient.discovery",
-    "pyvis.network",
-    "ollama",
+    "google.auth", "google.oauth2.credentials",
+    "google_auth_oauthlib.flow", "googleapiclient.discovery",
+    # Hermes signal connectors (dispatched lazily by name)
+    "connectors.strava", "connectors.spotify",
+    "connectors.todoist", "connectors.apple_health",
 ]
 
 a = Analysis(
@@ -69,9 +92,9 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # torch is REQUIRED by sentence-transformers (embeddings) — do NOT exclude it.
-        # Likewise scipy / sklearn / PIL are runtime deps of sentence-transformers.
-        "torchvision",  # not needed — text embeddings only
+        # torch IS required by sentence-transformers (embeddings) -- do NOT exclude it.
+        # scipy / sklearn / PIL are runtime deps of sentence-transformers -- keep them.
+        "torchvision",  # text embeddings only
         "torchaudio",
         "tensorflow",
         "matplotlib",   # not used
@@ -81,17 +104,10 @@ a = Analysis(
         "notebook",
         "pytest",
     ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(
-    a.pure,
-    a.zipped_data,
-    cipher=block_cipher,
-)
+pyz = PYZ(a.pure, a.zipped_data)
 
 exe = EXE(
     pyz,
@@ -103,13 +119,13 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,          # No console window — UI-only app
+    console=True,           # server app: keep the console so logs/errors are visible
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # icon="assets/icon.ico",   # uncomment and add icon file
+    # icon="assets/icon.ico",   # uncomment and add an icon file
 )
 
 coll = COLLECT(

@@ -9,7 +9,7 @@
 #   ./build_linux.sh          # first run: installs everything
 #   ./build_linux.sh --run    # subsequent runs: skip install, just launch
 #
-# The app opens automatically in your default browser at http://127.0.0.1:7860
+# The app opens automatically in your default browser at http://127.0.0.1:8000
 
 set -e
 
@@ -108,6 +108,19 @@ if [[ ! -d "$SCRIPT_DIR/data" ]]; then
     log "Created data/ directory"
 fi
 
+# ── Front-end build (React SPA served by FastAPI) ──────────────────────────
+# FastAPI serves frontend/dist; build it once with Node if it is missing.
+if [[ ! -d "$SCRIPT_DIR/frontend/dist" ]]; then
+    if command -v npm &>/dev/null; then
+        log "Building front-end (first run, may take a minute)..."
+        ( cd "$SCRIPT_DIR/frontend" && npm install && npm run build )
+        ok "Front-end built"
+    else
+        warn "npm not found and frontend/dist missing - the web UI will not load."
+        warn "Install Node.js 20+ from https://nodejs.org, then re-run."
+    fi
+fi
+
 # ── Create desktop shortcut (optional) ────────────────────────────────────
 DESKTOP_FILE="$HOME/.local/share/applications/knowledgemind.desktop"
 if [[ ! -f "$DESKTOP_FILE" ]] && [[ -d "$HOME/.local/share/applications" ]]; then
@@ -128,6 +141,6 @@ fi
 
 # ── Launch ────────────────────────────────────────────────────────────────
 echo ""
-log "Starting KnowledgeMind at http://127.0.0.1:7860 ..."
+log "Starting KnowledgeMind at http://127.0.0.1:8000 ..."
 echo ""
 exec "$PYTHON_VENV" "$SCRIPT_DIR/launcher.py"
