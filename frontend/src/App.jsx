@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getJSON, postJSON, getKey, setKey, validateKey, setUnauthorizedHandler, clearKey } from "./api";
 import Login from "./Login.jsx";
-import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation, Proactive } from "./views.jsx";
+import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation, Proactive, Insights } from "./views.jsx";
 // Project Advisor pulls in cytoscape — lazy-load it so it stays out of the main bundle.
 const ProjectAdvisor = lazy(() => import("./projmgmt/ProjectAdvisor.jsx"));
 
@@ -17,6 +17,7 @@ const ICON = {
   privacy:    ic(<><path d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-4z" /><path d="M9 12l2 2 4-4" /></>),
   evaluation: ic(<><path d="M3 3v18h18" /><rect x="7" y="10" width="3" height="7" /><rect x="12" y="6" width="3" height="11" /><rect x="17" y="13" width="3" height="4" /></>),
   proactive:  ic(<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>),
+  insights:   ic(<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />),
   refresh:    ic(<><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 4v5h-5" /></>),
   tests:      ic(<><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" /><path d="M9 3v6h6" /><path d="M8 13h8M8 17h4" /></>),
   beaker:     ic(<><path d="M6 2v6l-3 5a4 4 0 0 0 3.4 6h7.2A4 4 0 0 0 17 13L14 8V2" /><path d="M6 2h8" /><circle cx="10" cy="14" r="1.2" /></>),
@@ -43,6 +44,7 @@ const NAV = [
   ["graph",        "Knowledge Graph"],
   ["connectors",   "Connectors"],
   ["proactive",    "Proactive"],
+  ["insights",     "Insights"],
   ["assistant",    "Assistant"],
   ["documents",    "Documents"],
   ["privacy",      "Privacy"],
@@ -57,6 +59,7 @@ const VIEW = {
   graph:       Graph,
   connectors:  Connectors,
   proactive:   Proactive,
+  insights:    Insights,
   assistant:   Assistant,
   documents:   Documents,
   privacy:     Privacy,

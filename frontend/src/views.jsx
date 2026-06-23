@@ -659,6 +659,145 @@ export function Proactive({ refresh, notify }) {
   );
 }
 
+/* ---- Insights (Cross-Signal Intelligence) -------------------------------- */
+const READINESS_COLOR = { fresh: "var(--local)", ok: "var(--warn)", strained: "var(--danger)" };
+
+// Which derived fields each signal card surfaces (key, label, optional formatter).
+const SIGNAL_CARDS = [
+  { key: "apple_health", icon: "❤️", title: "Sleep & recovery", fields: [
+    ["sleep_hours", "sleep", (v) => (v != null ? v + " h" : "—")],
+    ["recovery_status", "recovery"],
+    ["low_hrv", "HRV", (v) => (v ? "low ↓" : "normal")],
+    ["high_rhr", "resting HR", (v) => (v ? "elevated ↑" : "normal")],
+  ] },
+  { key: "todoist", icon: "✓", title: "Task load", fields: [
+    ["due_today_count", "due today"],
+    ["overdue_count", "overdue"],
+    ["heavy_day", "heavy day", (v) => (v ? "yes" : "no")],
+  ] },
+  { key: "spotify", icon: "🎵", title: "Mood", fields: [
+    ["mood", "mood"],
+    ["avg_valence", "valence", (v) => (v != null ? Number(v).toFixed(2) : "—")],
+    ["avg_energy", "energy", (v) => (v != null ? Number(v).toFixed(2) : "—")],
+  ] },
+  { key: "strava", icon: "🏃", title: "Fitness", fields: [
+    ["days_since_last_activity", "days since active"],
+    ["weekly_run_km", "weekly km", (v) => (v != null ? Number(v).toFixed(1) : "—")],
+  ] },
+];
+
+function ReadinessGauge({ score, label }) {
+  const r = 54, C = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, score || 0)) / 100;
+  const color = READINESS_COLOR[label] || "var(--warn)";
+  return (
+    <svg viewBox="0 0 150 150" style={{ width: 150, height: 150, flexShrink: 0 }} aria-label={`readiness ${score} ${label}`}>
+      <circle cx="75" cy="75" r={r} fill="none" stroke="var(--border)" strokeWidth="13" />
+      <circle cx="75" cy="75" r={r} fill="none" stroke={color} strokeWidth="13"
+        strokeLinecap="round" strokeDasharray={`${pct * C} ${C}`}
+        transform="rotate(-90 75 75)" style={{ transition: "stroke-dasharray .6s ease" }} />
+      <text x="75" y="72" textAnchor="middle" style={{ fill: color, fontSize: 34, fontWeight: 700 }}>{score ?? "—"}</text>
+      <text x="75" y="95" textAnchor="middle" style={{ fill: "var(--text-muted)", fontSize: 12.5, fontWeight: 600, letterSpacing: ".08em" }}>{(label || "").toUpperCase()}</text>
+    </svg>
+  );
+}
+
+function FactorRow({ f }) {
+  const help = f.impact >= 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+      <span className="badge badge-src" style={{ textTransform: "none" }}>{String(f.signal).replace(/_/g, " ")}</span>
+      <span style={{ flex: 1, fontSize: 13 }}>{f.detail}</span>
+      <span className={"badge " + (help ? "badge-local" : "badge-soft")}>{f.impact > 0 ? "+" : ""}{f.impact}</span>
+    </div>
+  );
+}
+
+function SignalCard({ icon, title, snap, fields }) {
+  return (
+    <div className="card conn-card">
+      <div className="conn-head">
+        <span className="conn-icon">{icon}</span>
+        <div><div className="conn-title">{title}</div></div>
+        {snap && <span className={"chip " + (snap.source === "live" ? "chip-live" : "chip-demo")} style={{ marginLeft: "auto" }}>{snap.source === "live" ? "● live" : "mock"}</span>}
+      </div>
+      {!snap
+        ? <div className="conn-summary">No data yet — open Connectors or run a scan.</div>
+        : (
+          <div className="conn-signals">
+            {fields.map(([k, lbl, fmt]) => (
+              <div className="conn-signal" key={k}><span className="k">{lbl}</span><span className="v">{fmt ? fmt(snap[k]) : (snap[k] ?? "—")}</span></div>
+            ))}
+          </div>
+        )}
+    </div>
+  );
+}
+
+export function Insights({ refresh }) {
+  const [data, setData] = useState(undefined); // undefined = loading, null = error/none
+  useEffect(() => {
+    getJSON("/api/insights").then(setData).catch(() => setData(null));
+  }, [refresh]);
+
+  if (data === undefined) return <Empty big="🧭" title="Loading insights…" sub="" />;
+  if (!data || !data.readiness)
+    return <Empty big="🧭" title="No insights yet" sub="Run a scan or open Connectors so the signals exist, then return here." />;
+
+  const rd = data.readiness;
+  const sig = data.signals || {};
+  const load = data.load || {};
+  const next = load.next || [];
+  const color = READINESS_COLOR[rd.label] || "var(--warn)";
+
+  return (
+    <>
+      <div className="privacy-banner">{ShieldIcon}<div><strong>Readiness is computed on-device.</strong> Your sleep, recovery, task-load, and mood signals are fused with your commitments locally — deterministically, with no LLM and nothing sent to the cloud.</div></div>
+
+      <div className="card" style={{ display: "flex", gap: 22, alignItems: "center", flexWrap: "wrap" }}>
+        <ReadinessGauge score={rd.score} label={rd.label} />
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", letterSpacing: ".05em", textTransform: "uppercase" }}>Today's readiness · {data.date}</div>
+          <div style={{ fontSize: 17, fontWeight: 600, margin: "6px 0 10px", color }}>{rd.recommendation}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            {load.commitments_today} commitment{load.commitments_today === 1 ? "" : "s"} today
+            {load.conflicts > 0 ? ` · ${load.conflicts} conflict${load.conflicts === 1 ? "" : "s"}` : ""}
+          </div>
+        </div>
+      </div>
+
+      <h2 className="section-title">What's affecting your readiness</h2>
+      <div className="card">
+        {rd.factors.length === 0
+          ? <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--local)" }}><span style={{ fontSize: 20 }}>✅</span><span style={{ fontSize: 13 }}>Nothing is dragging your readiness down — you're fresh.</span></div>
+          : rd.factors.map((f, i) => <FactorRow key={i} f={f} />)}
+      </div>
+
+      <h2 className="section-title">Today's load</h2>
+      <div className="kpi-row">
+        <div className="kpi"><div className="num">{load.commitments_today ?? "—"}</div><div className="lbl">Commitments today</div></div>
+        <div className={"kpi" + (load.conflicts > 0 ? " alert" : "")}><div className="num">{load.conflicts ?? "—"}</div><div className="lbl">Conflicts</div></div>
+        <div className="kpi"><div className="num">{next.length}</div><div className="lbl">Upcoming</div></div>
+      </div>
+      {next.length > 0 && (
+        <div className="stack" style={{ marginTop: 12 }}>
+          {next.map((n, i) => (
+            <div className="tl" key={i}>
+              <div className="time">{n.at}</div>
+              <div className="body"><div className="t">{n.description}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 className="section-title">Signals</h2>
+      <div className="conn-grid">
+        {SIGNAL_CARDS.map((c) => <SignalCard key={c.key} icon={c.icon} title={c.title} snap={sig[c.key]} fields={c.fields} />)}
+      </div>
+    </>
+  );
+}
+
 /* ---- Settings ------------------------------------------------------------ */
 export function Settings() {
   const [cfg, setCfg] = useState(null);

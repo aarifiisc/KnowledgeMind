@@ -59,6 +59,7 @@ python-multipart
 python-dotenv
 pydantic
 rich
+httpx          # FastAPI TestClient (api/smoke.py); also a transitive groq/ollama dep
 pandas
 tabulate
 

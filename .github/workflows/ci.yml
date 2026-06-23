@@ -26,13 +26,15 @@ jobs:
           for m in kg.schema kg.graph kg.queries connectors.base connectors.mock \
                    connectors.factory routing.router extraction.prompts extraction.ner \
                    extraction.timeparse extraction.commitment monitor.fsm \
-                   proactive.briefing; do
+                   proactive.briefing proactive.insights; do
             echo "== $m =="; python -m $m;
           done
       - name: Benchmark (routing/privacy contract)
         run: python benchmark.py --mode static
       - name: Conflict-detection demo
         run: python demo_conflicts.py
+      - name: API smoke (offline TestClient — insights + briefing endpoints)
+        run: python -m api.smoke
 
   frontend:
     runs-on: ubuntu-latest
