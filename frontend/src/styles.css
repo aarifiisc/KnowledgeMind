@@ -284,6 +284,26 @@ body {
   font: inherit; font-size: 12.5px; cursor: pointer; }
 .lock-btn:hover { color: var(--text); background: var(--surface-2); }
 
+/* Knowledge Graph (interactive cytoscape) ---------------------------------- */
+.kg-root { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.kg-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.kg-toolbar .graph-legend { margin-bottom: 0; }
+.kg-tools { display: flex; align-items: center; gap: 12px; }
+.kg-counts { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.kg-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.kg-line { width: 16px; height: 0; border-top: 2px dashed currentColor; display: inline-block; }
+.kg-stage { position: relative; flex: 1; min-height: 0; }
+.kg-canvas { position: absolute; inset: 0; }
+.kg-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--text-muted); text-align: center; pointer-events: none; }
+.kg-overlay .big { font-size: 44px; }
+.kg-hint { position: absolute; left: 14px; bottom: 12px; font-size: 11px; color: var(--text-muted); opacity: .65; pointer-events: none; }
+.kg-detail { position: absolute; top: 14px; right: 14px; width: 236px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 14px 12px; box-shadow: var(--shadow); }
+.kg-detail-x { position: absolute; top: 7px; right: 10px; background: none; border: none; color: var(--text-muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0; }
+.kg-detail-label { font-weight: 600; font-size: 13.5px; line-height: 1.35; margin-bottom: 9px; padding-right: 16px; }
+.kg-detail-type { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 20px; margin-bottom: 8px; }
+.kg-detail-row { display: flex; gap: 10px; font-size: 12px; margin-top: 5px; color: var(--text); }
+.kg-detail-row span { color: var(--text-muted); min-width: 46px; }
+
 /* SimChat ------------------------------------------------------------------  */
 .content--simchat { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 

@@ -109,70 +109,8 @@ function ConflictCard({ c }) {
   );
 }
 
-/* ---- Knowledge Graph ----------------------------------------------------- */
-export function Graph({ refresh }) {
-  const [html, setHtml] = useState("");
-  useEffect(() => {
-    Promise.all([getJSON("/api/commitments"), getJSON("/api/conflicts")])
-      .then(([c1, c2]) => setHtml(buildGraphSVG(c1.commitments || [], c2.conflicts || [])))
-      .catch(() => setHtml(""));
-  }, [refresh]);
-  return (
-    <div className="card">
-      <div className="graph-legend">
-        <span className="lg"><i className="dot dot-person"></i> Person</span>
-        <span className="lg"><i className="dot dot-cal"></i> Calendar</span>
-        <span className="lg"><i className="dot dot-chat"></i> Chat</span>
-        <span className="lg"><i className="line line-conflict"></i> Conflict</span>
-      </div>
-      <div className="graph-wrap" dangerouslySetInnerHTML={{ __html: html || "<div class='empty'><div class='big'>🕸️</div><strong>Graph is empty</strong><div>Run a scan first.</div></div>" }} />
-    </div>
-  );
-}
-
-function buildGraphSVG(commitments, conflicts) {
-  if (!commitments.length) return "";
-  const whoOf = (c) => (c.who && c.who !== "(self)" ? c.who : "You");
-  const persons = [];
-  for (const c of commitments) { const w = whoOf(c); if (!persons.includes(w)) persons.push(w); }
-  persons.sort((a, b) => (a === "You" ? -1 : b === "You" ? 1 : a.localeCompare(b)));
-
-  const topPad = 34, gap = 70, leftX = 90, cardX = 430, cardW = 300, cardH = 46;
-  const rows = commitments.length;
-  const H = topPad * 2 + (rows - 1) * gap + cardH;
-  const W = cardX + cardW + 100;
-  const commY = (j) => topPad + j * gap;
-  const span = rows <= 1 ? 0 : (rows - 1) * gap;
-  const personY = (i) => topPad + cardH / 2 + (persons.length <= 1 ? span / 2 : (i * span) / (persons.length - 1));
-
-  const idx = new Map();
-  commitments.forEach((c, j) => idx.set(c.description + "@" + c.start_ts, j));
-
-  let edges = "", conflictEdges = "", nodes = "";
-  commitments.forEach((c, j) => {
-    const pi = persons.indexOf(whoOf(c));
-    const x1 = leftX + 22, y1 = personY(pi), x2 = cardX, y2 = commY(j) + cardH / 2, mx = (x1 + x2) / 2;
-    edges += `<path class="gedge" d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"/>`;
-  });
-  conflicts.forEach((cf) => {
-    const ja = idx.get(cf.a_desc + "@" + cf.a_start), jb = idx.get(cf.b_desc + "@" + cf.b_start);
-    if (ja === undefined || jb === undefined) return;
-    const x = cardX + cardW, ya = commY(ja) + cardH / 2, yb = commY(jb) + cardH / 2;
-    const bulge = x + 56 + Math.abs(ya - yb) * 0.12;
-    const stroke = cf.same_event ? "var(--warn)" : "var(--danger)";
-    conflictEdges += `<path class="gconflict" style="stroke:${stroke}" d="M${x} ${ya} C ${bulge} ${ya}, ${bulge} ${yb}, ${x} ${yb}"/>`;
-    conflictEdges += `<text class="gconflict-label" style="fill:${stroke}" x="${bulge - 6}" y="${(ya + yb) / 2}">${Math.round(cf.overlap_minutes)}m</text>`;
-  });
-  persons.forEach((p, i) => {
-    const y = personY(i), init = p === "You" ? "★" : p.slice(0, 1).toUpperCase();
-    nodes += `<g><circle class="gperson" cx="${leftX}" cy="${y}" r="20"/><text class="gperson-init" x="${leftX}" y="${y + 4}" text-anchor="middle">${esc(init)}</text><text class="gnode-label" x="${leftX}" y="${y + 36}" text-anchor="middle">${esc(trunc(p, 12))}</text></g>`;
-  });
-  commitments.forEach((c, j) => {
-    const y = commY(j), cls = c.source === "calendar" ? "cal" : "chat";
-    nodes += `<g><rect class="gcard ${cls}" x="${cardX}" y="${y}" width="${cardW}" height="${cardH}" rx="10"/><text class="gnode-label" x="${cardX + 14}" y="${y + 19}">${esc(trunc(c.description, 34))}</text><text class="gnode-sub" x="${cardX + 14}" y="${y + 36}">${esc(c.source)} · ${esc(c.commitment_type)}</text></g>`;
-  });
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin meet">${edges}${conflictEdges}${nodes}</svg>`;
-}
+/* ---- Knowledge Graph — moved to KnowledgeGraph.jsx (interactive cytoscape view,
+   backed by GET /api/graph). The old hand-drawn bipartite SVG lived here. ---- */
 
 /* ---- Connectors (Hermes signal sources) ---------------------------------- */
 const CONN_META = {
@@ -1179,7 +1117,7 @@ export function Evaluation({ refresh, notify }) {
 
   return (
     <>
-      <div className="privacy-banner">{ChartIcon}<div><strong>Week-05 evaluation harness.</strong> Routing accuracy, latency, tokens, and a validated LLM-as-judge (TPR/TNR with 95% CIs) over a versioned golden set. Offline stub by default — no keys needed.</div></div>
+      <div className="privacy-banner">{ChartIcon}<div><strong>Evaluation harness.</strong> Routing accuracy, latency, tokens, and a validated LLM-as-judge (TPR/TNR with 95% CIs) over a versioned golden set. Offline stub by default — no keys needed.</div></div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 16px", flexWrap: "wrap" }}>
         <button className="btn btn-primary" onClick={runEval} disabled={running}>{running ? "Running…" : "Run evaluation"}</button>
         {report && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>mode {report.mode} · judge {report.judge_backend} · n={report.n_cases} · {new Date(report.generated_at).toLocaleString()}</span>}
@@ -1233,7 +1171,7 @@ function EvalReport({ r, privacy }) {
 
       {privacy && (
         <>
-          <h2 className="section-title">Privacy posture (Stream 3)</h2>
+          <h2 className="section-title">Privacy posture</h2>
           <div className="kpi-row">
             <div className="kpi"><div className="num">{privacy.pct_local}%</div><div className="lbl">Routed LOCAL</div></div>
             <div className="kpi"><div className="num">{privacy.leaks_prevented}</div><div className="lbl">Leaks prevented</div></div>

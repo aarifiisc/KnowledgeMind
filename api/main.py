@@ -40,6 +40,7 @@ from pydantic import BaseModel
 from config.store import get_config
 from connectors.mock import MockConnector, MockCalendarSource
 from extraction.commitment import extract_commitments
+from kg.graph import build_graph
 from kg.schema import get_db_connection
 from monitor.fsm import MonitorRunner
 
@@ -269,6 +270,100 @@ def conflicts() -> dict:
     real = [c for c in items if not c["same_event"]]
     return {"conflicts": items, "real_count": len(real),
             "duplicate_count": len(items) - len(real)}
+
+
+@app.get("/api/graph")
+def graph() -> dict:
+    """Serialize the real NetworkX knowledge graph (kg.graph.build_graph) into
+    cytoscape-friendly nodes + edges. Reads the same demo DB as the dashboard,
+    so it stays in sync with /api/commitments and /api/conflicts.
+
+    Two view-layer enrichments on top of the raw engine graph (build_graph is
+    left untouched):
+      • a synthetic "You" node — calendar/self commitments carry person_id=NULL
+        and would otherwise float; we anchor them to the user (the centre of a
+        *personal* KG), mirroring the old hand-drawn view.
+      • conflict edges are taken from the full conflicts table, so a conflict
+        whose SOFT side the janitor has archived (the flagship cross-channel
+        case) still renders — the archived partner comes back as a dimmed node.
+    """
+    cfg = get_config()
+    conn = get_db_connection(cfg.db_path)
+    try:
+        g = build_graph(conn)
+        conflict_rows = conn.execute(
+            """SELECT cf.commitment_a_id AS a_id, cf.commitment_b_id AS b_id,
+                      cf.overlap_minutes,
+                      a.description AS a_desc, a.source AS a_src, a.start_ts AS a_start,
+                      a.commitment_type AS a_type, a.status AS a_status, a.person_id AS a_person,
+                      b.description AS b_desc, b.source AS b_src, b.start_ts AS b_start,
+                      b.commitment_type AS b_type, b.status AS b_status, b.person_id AS b_person
+               FROM conflicts cf
+               JOIN commitments a ON cf.commitment_a_id = a.id
+               JOIN commitments b ON cf.commitment_b_id = b.id"""
+        ).fetchall()
+    finally:
+        conn.close()
+
+    nodes = {nid: {"id": nid, **data} for nid, data in g.nodes(data=True)}
+    active_ids = set(nodes)  # nodes the engine considers active
+
+    # has_commitment edges + in-degree (to spot person-less commitments)
+    edges, indeg = [], {}
+    for u, v, data in g.edges(data=True):
+        if data.get("label") == "conflict":
+            continue  # conflicts handled from the full table below
+        edges.append({"id": f"{u}->{v}", "source": u, "target": v, **data})
+        indeg[v] = indeg.get(v, 0) + 1
+
+    # Enrichment 1 — anchor orphan (person-less) commitments to a "You" node.
+    SELF = "person:self"
+    for nid, data in list(nodes.items()):
+        if data.get("type") == "Commitment" and indeg.get(nid, 0) == 0:
+            nodes.setdefault(SELF, {"id": SELF, "label": "You", "type": "Person", "self": True})
+            edges.append({"id": f"{SELF}->{nid}", "source": SELF, "target": nid, "label": "has_commitment"})
+
+    # Enrichment 2 — conflict edges from the full table (resurrect archived sides).
+    def ensure_commitment(cid, desc, src, start, ctype, status, person_id):
+        nid = f"commitment:{cid}"
+        if nid not in nodes:
+            nodes[nid] = {"id": nid, "label": (desc or "")[:40], "type": "Commitment",
+                          "commitment_type": ctype, "source": src, "start_ts": start,
+                          "archived": status != "active"}
+            # Anchor the resurrected (archived) commitment to its person — or to
+            # "You" if it was a self/calendar item — so it isn't left dangling
+            # off only the conflict edge, and its person isn't left isolated.
+            owner = f"person:{person_id}" if person_id is not None else SELF
+            if owner == SELF:
+                nodes.setdefault(SELF, {"id": SELF, "label": "You", "type": "Person", "self": True})
+            if owner in nodes:
+                edges.append({"id": f"{owner}->{nid}", "source": owner, "target": nid, "label": "has_commitment"})
+        return nid
+
+    for r in conflict_rows:
+        na = f"commitment:{r['a_id']}"
+        nb = f"commitment:{r['b_id']}"
+        if na not in active_ids and nb not in active_ids:
+            continue  # both sides archived → the conflict is retired too
+        na = ensure_commitment(r["a_id"], r["a_desc"], r["a_src"], r["a_start"], r["a_type"], r["a_status"], r["a_person"])
+        nb = ensure_commitment(r["b_id"], r["b_desc"], r["b_src"], r["b_start"], r["b_type"], r["b_status"], r["b_person"])
+        # same_event = the same real-world event seen on two channels (a duplicate),
+        # as opposed to a genuine scheduling clash.
+        same_event = bool(
+            r["a_src"] != r["b_src"]
+            and abs((r["a_start"] or 0) - (r["b_start"] or 0)) < 60
+            and (_topic_tokens(r["a_desc"] or "") & _topic_tokens(r["b_desc"] or ""))
+        )
+        edges.append({"id": f"{na}~{nb}", "source": na, "target": nb, "label": "conflict",
+                      "overlap_minutes": r["overlap_minutes"], "same_event": same_event})
+
+    node_list = list(nodes.values())
+    counts = {
+        "persons": sum(1 for d in node_list if d.get("type") == "Person"),
+        "commitments": sum(1 for d in node_list if d.get("type") == "Commitment"),
+        "conflicts": sum(1 for e in edges if e.get("label") == "conflict"),
+    }
+    return {"nodes": node_list, "edges": edges, "counts": counts}
 
 
 class ChatIn(BaseModel):

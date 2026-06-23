@@ -1,9 +1,10 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getJSON, postJSON, getKey, setKey, validateKey, setUnauthorizedHandler, clearKey } from "./api";
 import Login from "./Login.jsx";
-import { Dashboard, Graph, Connectors, Assistant, Documents, Settings, Privacy, Evaluation, Proactive, Insights, SimChat } from "./views.jsx";
-// Project Advisor pulls in cytoscape — lazy-load it so it stays out of the main bundle.
+import { Dashboard, Connectors, Assistant, Documents, Settings, Proactive, Insights, SimChat } from "./views.jsx";
+// Project Advisor + Knowledge Graph both pull in cytoscape — lazy-load them so it stays out of the main bundle.
 const ProjectAdvisor = lazy(() => import("./projmgmt/ProjectAdvisor.jsx"));
+const Graph = lazy(() => import("./KnowledgeGraph.jsx"));
 
 
 const ic = (d) => <svg viewBox="0 0 24 24" className="icon">{d}</svg>;
@@ -51,8 +52,6 @@ const NAV = [
   ["insights", "Insights"],
   ["assistant", "Assistant"],
   ["documents", "Documents"],
-  ["privacy", "Privacy"],
-  ["evaluation", "Evaluation"],
   ["projadvisor", "Project Advisor"],
   ["settings", "Settings"],
 ];
@@ -67,8 +66,6 @@ const VIEW = {
   insights: Insights,
   assistant: Assistant,
   documents: Documents,
-  privacy: Privacy,
-  evaluation: Evaluation,
   projadvisor: ProjectAdvisor,
   settings: Settings,
 };
@@ -203,7 +200,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className={"content" + (view === "projadvisor" ? " content--full" : "") + (view === "simchat" ? " content--simchat" : "")}>
+        <div className={"content" + (view === "projadvisor" || view === "graph" ? " content--full" : "") + (view === "simchat" ? " content--simchat" : "")}>
           <Suspense fallback={<div className="empty">Loading…</div>}>
             <ViewComp refresh={refresh} notify={notify} />
           </Suspense>
