@@ -1,44 +1,35 @@
-% KnowledgeMind — ECAI-style 3-page project report
-% Compile: pdflatex -> bibtex -> pdflatex -> pdflatex
-\documentclass[10pt,twocolumn]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% ── Geometry & fonts ──────────────────────────────────────────────────────────
-\usepackage[a4paper,
-            top=2.4cm, bottom=2.4cm,
-            left=1.7cm, right=1.7cm,
-            columnsep=0.6cm]{geometry}
-\usepackage{times}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{microtype}
+%%% LaTeX Template for ECAI Papers
+%%% Prepared by Ulle Endriss (version 1.0 of 2023-12-10)
 
-% ── Headings & layout ─────────────────────────────────────────────────────────
-\usepackage{titlesec}
-\titleformat{\section}{\normalsize\bfseries\scshape}{\thesection.}{0.5em}{}
-\titleformat{\subsection}{\small\bfseries}{\thesubsection}{0.5em}{}
-\titlespacing*{\section}{0pt}{6pt}{3pt}
-\titlespacing*{\subsection}{0pt}{4pt}{2pt}
+%%% To be used with the ECAI class file ecai.cls.
+%%% You also will need a bibliography file (such as mybibfile.bib).
 
-% ── Graphics, diagrams, tables ────────────────────────────────────────────────
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Start your document with the \documentclass{} command.
+%%% Use the first variant for the camera-ready paper.
+%%% Use the second variant for submission (for double-blind reviewing).
+
+\documentclass{ecai}
+%\documentclass[doubleblind]{ecai}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Load any packages you require here.
+
+\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
 \usepackage{graphicx}
+\usepackage{color}
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit,
                 backgrounds, decorations.pathreplacing, calc}
-\usepackage{booktabs}
-\usepackage{tabularx}
-\usepackage{xcolor}
-\usepackage{amssymb}
-
-% ── References & hyperlinks ───────────────────────────────────────────────────
-\usepackage{cite}
-\usepackage[hidelinks]{hyperref}
-
-% ── Utility ───────────────────────────────────────────────────────────────────
-\usepackage{parskip}
-\setlength{\parskip}{2pt}
-\setlength{\parindent}{1em}
-\usepackage{enumitem}
-\setlist{nosep, leftmargin=1.2em}
 
 % ── Colour palette ────────────────────────────────────────────────────────────
 \definecolor{localcol}{HTML}{2E86AB}   % steel blue  – local/private
@@ -49,176 +40,137 @@
 \definecolor{monoccol}{HTML}{F4A261}   % warm orange – monitor
 \definecolor{headercol}{HTML}{1A1A2E}  % near-black  – headers
 
-% ─────────────────────────────────────────────────────────────────────────────
-%  TITLE BLOCK
-% ─────────────────────────────────────────────────────────────────────────────
-\title{\textbf{KnowledgeMind: A Privacy-Aware Hybrid AI Agent\\
-for Organisational Commitment and Knowledge Management}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\author{%
-  Aarif Zafar\quad
-  Swarup E\quad
-  Rakshit Ramesh\quad
-  Novoneel Chakraborty\\
-  Sourav Thakur\quad
-  Sathya Sekar\quad
-  Sarthak Sharma\\[2pt]
-  \small Indian Institute of Science, Bengaluru 560012, India
-}
-\date{}
+%%% Define any theorem-like environments you require here.
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{definition}{Definition}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Define any new commands you require here.
+
+\newcommand{\BibTeX}{B\kern-.05em{\sc i\kern-.025em b}\kern-.08em\TeX}
+\newcommand{\km}{\textsc{KnowledgeMind}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
-\maketitle
-\thispagestyle{empty}
 
-% ─────────────────────────────────────────────────────────────────────────────
-%  ABSTRACT
-% ─────────────────────────────────────────────────────────────────────────────
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frontmatter}
+
+%%% Use this command to specify your submission number.
+%%% In doubleblind mode, it will be printed on the first page.
+
+\paperid{1}
+
+%%% Use this command to specify the title of your paper.
+
+\title{KnowledgeMind: A Privacy-Aware Personal AI Agent with an
+On-Device Knowledge Graph and Hybrid Local/Cloud Routing}
+
+%%% Authors. This work was carried out as a course project for the
+%%% Deep Learning course taught by Prof. Deepak Subramani at IISc Bengaluru.
+%%% TODO: confirm your name spelling, add co-authors if any, and your ORCID.
+
+% \author[A]{\fnms{Aarif}~\snm{Zafar}\thanks{Corresponding Author. Email: aarifzafar@iisc.ac.in. This work was carried out as a course project for the Deep Learning course taught by Prof.~Deepak Subramani.}}
+\author[A]{\fnms{Aarif}~\snm{Z.}\footnote{Equal contribution.}}
+\author[A]{\fnms{Sourav}~\snm{T.}\footnotemark}
+\author[A]{\fnms{Sathyanarayanan}~\snm{K.}\footnotemark}
+\author[A]{\fnms{Sarthak}~\snm{S.}\footnotemark}
+\author[A]{\fnms{Novoneel}~\snm{C.}\footnotemark}
+\author[A]{\fnms{Rakshit}~\snm{R.}\footnotemark}
+\author[A]{\fnms{Swarup}~\snm{E.}\footnotemark}
+
+\address[A]{Indian Institute of Science, Bengaluru, India}
+
+%%% Use this environment to include an abstract of your paper.
+
 \begin{abstract}
-\noindent
-Professionals operating across multiple communication channels accumulate
-implicit commitments—meeting agreements, task deadlines, informal promises—that
-existing productivity tools fail to track holistically.
-We present \textbf{KnowledgeMind}, a privacy-aware personal AI agent that
-ingests Slack, calendar, and e-mail streams, extracts hard and soft commitments
-via spaCy NER and few-shot prompted LLMs, and fuses them into a
-SQLite\,+\,NetworkX personal knowledge graph.
-A proactive LangGraph FSM monitors the graph for temporal conflicts and nudges
-the user before they arise.
-A hybrid privacy router enforces an invariant: any task touching personal data
-is executed exclusively on a local Qwen2.5-3B model; only non-sensitive tasks
-are delegated to a free-tier cloud model.
-A three-level ReAct agent (L1–L3) and a Project Advisor sub-system extend the
-platform into full organisational project management.
-The system runs CPU-only on commodity hardware and degrades gracefully to mock
-data in the absence of API keys.
+% TODO: tighten once the evaluation numbers are final (keep under 200 words).
+Personal AI assistants often require access to a user's most sensitive
+data, such as their calendar, messages, and email, yet most route that data to
+remote large language models. We present \km, a privacy-aware personal agent
+that runs entirely on commodity hardware (CPU-only) and treats on-device
+processing as a hard invariant. \km{} ingests a user's communication channels,
+extracts both hard commitments (calendar events) and soft commitments (informal
+agreements in chat) into a personal knowledge graph built on SQLite and
+NetworkX, and proactively detects scheduling conflicts across the user's whole
+timeline before they occur. A privacy router scores every task on privacy and
+complexity and dispatches it to a local model (via Ollama) or, only when the
+task is non-sensitive, to a free cloud model; privacy always takes precedence
+over complexity. The agent supports three levels of agency, from a single
+augmented call to a full ReAct loop with replanning, and falls back to mock data
+when no credentials are present. We describe the architecture, the privacy contract,
+and an offline evaluation of routing accuracy and conflict detection.
 \end{abstract}
 
-% ─────────────────────────────────────────────────────────────────────────────
-%  1  INTRODUCTION
-% ─────────────────────────────────────────────────────────────────────────────
+\end{frontmatter}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{Introduction}
 
-Modern knowledge workers routinely context-switch across e-mail, instant
-messaging, and calendar applications.
-This fragmentation creates a structural blind spot: commitments that exist
-across channels—``I'll have the report ready by Friday'' in Slack,
-a 3\,PM meeting in Google Calendar, a task in a project tracker—are never
-co-located, so conflicts remain invisible until they escalate into missed
-deadlines or double-booked time.
+Personal AI assistants promise to reason over a user's calendar, messages, and
+email, but doing so typically means sending that data to a remote model. \km{}
+takes the opposite stance: all personal data is processed locally, and only
+anonymised, non-sensitive work is ever routed to the cloud.
 
-Existing solutions address only one slice of this problem.
-Calendar applications are authoritative for hard, confirmed events but ignore
-the conversational layer.
-Task managers such as Todoist or Notion require \emph{manual} entry and are
-therefore only as complete as the user's discipline.
-Large-language-model (LLM) assistants such as ChatGPT or Copilot can
-summarise or draft content but lack persistent memory, have no live connection
-to personal data sources, and route \emph{all} user data to external servers,
-creating unacceptable privacy exposure.
+\noindent\textbf{Problem statement.} Given a heterogeneous stream of
+communication artefacts (chat messages, calendar events, emails), the system
+must (i)~extract implicit and explicit commitments from natural language,
+(ii)~fuse them into a temporally consistent personal knowledge graph,
+(iii)~detect and proactively surface conflicts, and (iv)~do so without
+transmitting personal data beyond the user's device.
 
-\medskip\noindent\textbf{Problem statement.}
-Given a heterogeneous stream of communication artefacts (chat messages,
-calendar events, e-mails), the system must: (i)~extract implicit and explicit
-commitments from natural language; (ii)~fuse them into a temporally consistent
-personal knowledge graph; (iii)~detect and proactively surface conflicts;
-and (iv)~do so without transmitting personal data beyond the user's device.
+\noindent\textbf{Contributions.}
+\begin{itemize}[noitemsep]
+  \item A privacy-pinned hybrid router that keeps a fixed set of personal-data
+        tools on the local model, with per-tool minimum privacy floors that
+        resist adversarial phrasing.
+  \item A dual-tier commitment-extraction pipeline combining spaCy NER with
+        few-shot LLM prompting and confidence-graded output
+        (\textsc{hard}\,/\,\textsc{soft}\,/\,\textsc{tentative}).
+  \item A personal knowledge graph with a proactive monitor that detects temporal
+        conflicts across the user's whole timeline and emits dismissable nudges
+        with quiet-hour suppression.
+  \item A three-level ReAct orchestrator (L1 to L3) and an integrated Project
+        Advisor that together span single-shot answers to multi-step replanning.
+\end{itemize}
 
-\medskip\noindent\textbf{Contributions.}
-\begin{enumerate}
-  \item A privacy-invariant hybrid router that guarantees personal data never
-        leaves the local model, with per-tool minimum privacy floors.
-  \item A dual-tier commitment extraction pipeline combining spaCy NER and
-        few-shot LLM prompting with confidence-graded output
-        (HARD / SOFT / TENTATIVE).
-  \item A proactive LangGraph FSM that monitors the KG autonomously, detects
-        temporal overlaps, and emits dismissable nudges with quiet-hour
-        suppression.
-  \item A three-level ReAct orchestrator and an integrated Project Advisor that
-        together span L1 single-shot to L3 multi-step replanning.
-\end{enumerate}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% ─────────────────────────────────────────────────────────────────────────────
-%  2  RELATED WORK AND MARKET LANDSCAPE
-% ─────────────────────────────────────────────────────────────────────────────
-\section{Related Work and Market Landscape}
+\section{Related work and market landscape}\label{sec:related}
 
-\subsection{Existing Productivity and AI Tools}
+\km{} sits at the intersection of three lines of work: tool-using LLM agents,
+the fusion of language models with knowledge graphs, and on-device
+privacy-preserving inference. Our agent loop follows the ReAct paradigm of
+interleaved reasoning and acting \citep{yao2023react}, and our use of a
+structured personal graph as the agent's memory follows the roadmap for unifying
+LLMs with knowledge graphs \citep{pan2024kg}. The distinguishing constraint is
+that all of this runs locally on a small model \citep{qwen2024}, orchestrated by
+a stateful graph executor \citep{langgraph2024}.
 
-Table~\ref{tab:comparison} maps the most prominent competing tools against the
-capabilities that KnowledgeMind targets.
+Existing tools each cover at most one or two of five capabilities (ingestion,
+extraction, memory, privacy, proactivity): calendars own confirmed events but
+ignore chat; task managers such as Todoist need manual entry; and cloud
+assistants such as Microsoft Copilot, ChatGPT, and Gemini summarise well but
+retain no user-controlled graph and send all data off-device
+\citep{ms2024copilot,openai2024gpt4,notion2024}. \km{} closes all five gaps in a
+single local agent, extensible through a Model Context Protocol (MCP) server. A
+full feature-by-feature comparison and per-tool discussion appear in
+Appendix~\ref{app:comparison} (Table~\ref{tab:comparison}).
 
-\begin{table}[h]
-\centering
-\caption{Feature comparison across competing tools.}
-\label{tab:comparison}
-\renewcommand{\arraystretch}{1.15}
-{\tiny
-\setlength{\tabcolsep}{2.5pt}
-\begin{tabular}{@{}l ccccc@{}}
-\toprule
-\textbf{Feature} &
-\rotatebox{65}{\textbf{Notion AI}} &
-\rotatebox{65}{\textbf{Copilot}} &
-\rotatebox{65}{\textbf{ChatGPT}} &
-\rotatebox{65}{\textbf{Todoist}} &
-\rotatebox{65}{\textbf{KM (Ours)}} \\
-\midrule
-Cross-channel ingestion    & $\times$ & \checkmark & $\times$ & $\times$ & \checkmark \\
-Soft-commit.\ extraction   & $\times$ & $\times$   & $\times$ & $\times$ & \checkmark \\
-Conflict detection         & $\times$ & partial    & $\times$ & $\times$ & \checkmark \\
-Proactive alerting         & $\times$ & $\times$   & $\times$ & $\times$ & \checkmark \\
-On-device privacy          & $\times$ & $\times$   & $\times$ & \checkmark & \checkmark \\
-Persistent KG memory       & partial  & $\times$   & plugin   & $\times$ & \checkmark \\
-Project plan alignment     & partial  & $\times$   & $\times$ & partial  & \checkmark \\
-CPU-only / free            & $\times$ & $\times$   & $\times$ & partial  & \checkmark \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\noindent\textbf{Notion AI / Confluence.}
-Document-centric wikis with AI-assisted drafting.
-They require manual data entry and do not ingest live communication
-channels~\cite{notion2024}.
-
-\noindent\textbf{Microsoft Copilot for Microsoft 365.}
-Deep integration with the M365 ecosystem provides meeting summaries and
-e-mail drafting, but all inference runs on Microsoft's cloud servers, data
-is not retained in a user-controlled graph, and the service is subscription
-gated~\cite{ms2024copilot}.
-
-\noindent\textbf{ChatGPT / Gemini.}
-Powerful conversational AI with optional plugin ecosystems.
-No persistent cross-session memory by default, no proactive alerting, and full
-data egress to external servers~\cite{openai2024gpt4}.
-
-\noindent\textbf{Todoist / Linear / Jira.}
-Task and project trackers that enforce structured, manual workflows.
-They capture only data the user explicitly enters and provide no NLP-based
-extraction from conversational channels.
-
-\subsection{Why a Unified Solution is Needed}
-
-Each existing tool covers at most one or two of the five axes:
-\emph{ingestion, extraction, memory, privacy, proactivity}.
-A practitioner who wants all five must manually stitch together multiple
-subscriptions and accept that personal data flows to multiple cloud providers.
-KnowledgeMind is designed as a single, locally running agent that closes all
-five gaps simultaneously, while remaining extensible via a Model Context
-Protocol (MCP) server for third-party tool integration.
-
-% ─────────────────────────────────────────────────────────────────────────────
-%  3  PROPOSED METHODOLOGY
-% ─────────────────────────────────────────────────────────────────────────────
-\section{Proposed Methodology}
-
-\subsection{System Architecture}
-
-Figure~\ref{fig:arch} illustrates the end-to-end architecture.
-The system decomposes into five interacting layers:
-\emph{Connectors}, \emph{Extraction}, \emph{Knowledge Graph},
-\emph{Routing \& Agent}, and \emph{Interface}.
+\section{System overview}
 
 \begin{figure}[h]
 \centering
@@ -340,166 +292,425 @@ The system decomposes into five interacting layers:
 \label{fig:arch}
 \end{figure}
 
-\subsection{Commitment Extraction}
+\km{} is structured as a single FastAPI backend that both serves a React
+single-page application and wraps the engine. Every request is gated by an
+optional access key; the application runs CPU-only and degrades to mock data
+whenever a connector's credentials are absent, so the full pipeline is
+exercisable offline. The engine is organised as a pipeline of six layers
+(Figure~\ref{fig:arch}).
 
-Messages from each connector are passed through a two-stage pipeline.
-First, spaCy's \texttt{en\_core\_web\_sm} model identifies named entities
-(persons, dates, times, organisations).
-Second, a few-shot prompted local LLM classifies each candidate span into one
-of three commitment types: HARD (confirmed calendar events), SOFT
-(conversational agreements, confidence $\geq 0.6$), or TENTATIVE (confidence
-$< 0.6$).
-The temporal expression resolver (\texttt{extraction/timeparse.py}) converts
-relative expressions such as ``\emph{by end of day}'' into absolute ISO
-timestamps for graph insertion.
+\begin{description}[leftmargin=1.2em,itemsep=2pt]
+  \item[Ingestion.] Connectors for Slack, Calendar, and Gmail expose a common
+        \texttt{fetch\_recent} interface and fall back to mock data on a failed
+        health check. A separate family of \emph{signal} connectors (fitness,
+        sleep, tasks, music) derives on-device features rather than messages.
+  \item[Extraction.] A spaCy named-entity pass and a few-shot local LLM map
+        raw messages into commitments, with a relative-time resolver mapping
+        expressions such as ``tomorrow'' or ``EOD'' to absolute time
+        (Section~\ref{sec:kg}).
+  \item[Knowledge graph.] Commitments are persisted in SQLite and assembled
+        into a NetworkX graph on demand; temporal conflicts are detected
+        incrementally on insert (Section~\ref{sec:kg}).
+  \item[Routing.] A privacy router classifies every task step as \textsc{local}
+        or \textsc{cloud} before any model is called (Section~\ref{sec:routing}).
+  \item[Agent.] A hybrid agent dispatches a shared registry of tools at one of
+        three levels of agency, injecting only structured graph summaries before
+        any cloud call (Section~\ref{sec:agent}).
+  \item[Proactive layer.] A finite-state monitor fires unprompted conflict
+        alerts, and an optional, off-by-default runtime composes nudges and a
+        daily briefing entirely on-device (Section~\ref{sec:proactive}).
+\end{description}
 
-\subsection{Privacy Router}
+The central design invariant is that all personal data (graph nodes, messages,
+calendar events, email bodies, and derived health or activity signals) is
+processed locally at all times. The cloud model receives only anonymised
+task descriptions, structured knowledge-graph summaries, and non-sensitive
+public queries. The next two sections make this invariant precise and describe
+how it is enforced.
 
-The router assigns two scores to each incoming task: a \emph{privacy score}
-$p \in [0,1]$ computed from keyword and tool-type matching, and a
-\emph{complexity score} $c \in [0,1]$ derived from structural heuristics
-(multi-step keywords, clause count).
-The decision rule is:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{center}
-\small
-\begin{tabular}{@{}ll@{}}
-  \textsc{local} & if $p \geq 0.65$ \;(privacy always wins)\\
-  \textsc{cloud} & if $c \geq 0.6$ and $p < 0.65$\\
-  \textsc{local} & otherwise (conservative fallback)
-\end{tabular}
-\end{center}
+\section{Personal knowledge graph}\label{sec:kg}
 
-\medskip\noindent
-A fixed set \texttt{ALWAYS\_LOCAL\_TOOLS} (KG queries, calendar, Gmail,
-health/fitness signals) is never routed to the cloud regardless of scores.
-Per-tool minimum privacy floors (e.g.\ KG $\geq 0.90$) make the invariant
-immune to adversarial task phrasing.
+\subsection{Commitment extraction}
 
-\subsection{Three-Level ReAct Agent}
+Messages from each connector pass through a two-stage pipeline. First, spaCy's
+\texttt{en\_core\_web\_sm} model \citep{spacy2020} identifies named entities
+(persons, dates, times, organisations). Second, a few-shot prompted local model
+classifies each candidate span into one of three commitment types: \textsc{hard}
+(confirmed calendar events), \textsc{soft} (conversational agreements, confidence
+$\geq 0.6$), or \textsc{tentative} (confidence $<0.6$). A temporal-expression
+resolver (\texttt{extraction/timeparse.py}) converts relative expressions such as
+``by end of day'' into absolute timestamps before insertion.
 
-\textbf{L1} handles single-question tasks with one optional tool call and
-direct synthesis.
-\textbf{L2} (default) uses a cloud plan–local dispatch–cloud critique loop:
-the cloud model generates a plan, each step is executed locally by
-\texttt{dispatch\_tool}, and the cloud model critiques the result.
-\textbf{L3} is a full LangGraph ReAct loop with automatic replanning on tool
-failure: if a booked time slot is already occupied (conflict detected by the
-KG), the agent finds the next free slot and retries.
+\subsection{Graph and conflict detection}
+
+Commitments are persisted in SQLite (tables for persons, commitments, conflicts,
+and conversation turns) and assembled into a NetworkX graph on demand. Two
+commitments conflict when their half-open time intervals overlap by at least five
+minutes anywhere on the user's personal timeline; \textsc{tentative} commitments
+never raise conflicts. Conflicts are detected incrementally as each commitment is
+inserted, so a newly arrived chat message can collide with an existing calendar
+event and surface an alert within one monitor cycle.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Privacy-aware routing}\label{sec:routing}
+
+The router enforces the on-device invariant. Given a task step (a piece of text
+$t$ and, when known, the tool $\tau$ it will call), it returns a binary decision
+in $\{\textsc{local}, \textsc{cloud}\}$ together with
+the two scores that justify it. The router is stateless and is applied
+\emph{before} any model is invoked, so a step destined for the local model never
+constructs a cloud prompt.
+
+\subsection{Scoring}
+
+The \emph{privacy score} combines a lightweight textual heuristic with a
+per-tool floor. Let $h_p(t)$ be the number of personal-data cue phrases (e.g.
+\emph{my}, \emph{calendar}, \emph{inbox}, \emph{meeting}) occurring in $t$, and
+let $\phi(\tau)\in[0,1]$ be the privacy floor of tool $\tau$ (zero if no tool is
+named). Then
+%
+\begin{equation}\label{eq:priv}
+s_{\mathrm{priv}}(t,\tau) \;=\;
+\max\!\Big(\min\big(0.10 + 0.18\,h_p(t),\,1\big),\; \phi(\tau)\Big).
+\end{equation}
+%
+The floor guarantees that a tool touching personal data cannot be scored as
+public merely because the user's phrasing was terse. The \emph{complexity score}
+rewards length and multi-step cue phrases (e.g. \emph{and}, \emph{then},
+\emph{compare}, \emph{summarise}); with $w(t)$ the word count and $h_c(t)$ the
+number of such cues,
+%
+\begin{equation}\label{eq:cplx}
+s_{\mathrm{cplx}}(t) \;=\;
+\min\!\Big(\min\big(\tfrac{w(t)}{40},\,0.5\big)
+        + \min\big(0.15\,h_c(t),\,0.5\big),\; 1\Big).
+\end{equation}
+
+\subsection{Decision rule}
+
+Two fixed sets of tools shape the decision. \texttt{ALWAYS\_LOCAL\_TOOLS}
+($\mathcal{L}$), comprising the knowledge-graph queries, calendar, email, message
+sending, the code sandbox, and all personal-signal tools, must never reach
+the cloud. \texttt{PREFER\_CLOUD\_TOOLS} ($\mathcal{C}=\{\texttt{web\_search}\}$)
+may use the cloud, but only when the task is not personal. With privacy
+threshold $\theta_p=0.65$ and complexity threshold $\theta_c=0.6$, the decision
+is taken in order:
+
+\begin{enumerate}[label=(\arabic*),noitemsep]
+  \item if $\tau\in\mathcal{L}$: \textsc{local};
+  \item else if $\tau\in\mathcal{C}$ and $s_{\mathrm{priv}}<\theta_p$:
+        \textsc{cloud};
+  \item else if $s_{\mathrm{priv}}\ge\theta_p$: \textsc{local};
+  \item else if $s_{\mathrm{cplx}}\ge\theta_c$ and $s_{\mathrm{priv}}<\theta_p$:
+        \textsc{cloud};
+  \item otherwise: \textsc{local} (the conservative default).
+\end{enumerate}
+
+Rule (3) precedes the complexity test, which is what makes privacy dominate: a
+complex but personal task stays local regardless of its reasoning depth; rules
+(1) and (3) jointly establish the contract below. The floors $\phi(\tau)$ pin
+sensitive tools high (knowledge-graph queries and Gmail at $0.95$, biometric
+signals up to $0.98$); the full table is given in Appendix~\ref{app:floors}
+(Table~\ref{tab:floors}).
+
+\subsection{Privacy contract}
+
+The routing logic is designed to satisfy a small set of invariants, which we
+treat as correctness properties:
+%
+\begin{enumerate}[label=(P\arabic*),noitemsep]
+  \item raw personal data never reaches the cloud: the planner is given
+        structured graph summaries, never verbatim messages or events;
+  \item every tool in $\mathcal{L}$ routes \textsc{local} unconditionally, and
+        the set is fixed (removing an entry is a breaking change);
+  \item $s_{\mathrm{priv}}\ge\theta_p$ forces \textsc{local} with no override
+        path; and
+  \item a local-pinned step that fails parsing is \emph{not} escalated to the
+        cloud; instead it falls back to heuristic parameters and stays local.
+\end{enumerate}
+%
+An offline contract test asserts that every tool in $\mathcal{L}$ remains
+\textsc{local} even under adversarial, high-complexity phrasing, and
+\texttt{web\_search} is routed to the cloud only when the query carries no
+personal cues; we report its pass rate in Section~\ref{sec:eval}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Agentic orchestration}\label{sec:agent}
+
+\km{} exposes three levels of agency over a single tool registry. Every tool
+takes a dictionary and returns a dictionary with at least a success flag and a
+formatted string for the model; tools never raise, so a dispatch failure is a
+value, not a crash. At every level the cloud model sees only structured
+knowledge-graph summaries, never raw personal text.
+
+\textbf{L1 (augmented)} answers a single question with at most one tool call and
+direct synthesis. \textbf{L2 (workflow, the default)} runs a cloud-plan,
+local-dispatch, cloud-critique loop: the cloud model produces a plan, each step
+is executed locally by \texttt{dispatch\_tool}, and the cloud model critiques the
+result. \textbf{L3 (autonomous)} is a full ReAct loop \citep{yao2023react} with
+automatic replanning on tool failure; for example, if a requested time slot is
+already occupied (a conflict reported by the knowledge graph), the agent finds
+the next free slot and retries.
 
 \subsection{Project Advisor}
 
 The Project Advisor is a self-contained ASGI sub-application mounted at
-\texttt{/projmgmt}.
-It accepts a Statement of Work document, builds a project-specific knowledge
-graph with rules (scope, budget, schedule), and exposes a chat interface that
-rates user queries against the project plan, flagging scope deviations with
-confidence scores.
-It shares the same privacy router and cloud LLM key as the main agent,
-making organisational project governance a first-class citizen of the platform.
+\texttt{/projmgmt}. It ingests a Statement of Work, builds a project-specific
+knowledge graph with rules for scope, budget, and schedule, and exposes a chat
+interface that rates user queries against the plan and flags scope deviations
+with confidence scores. It reuses the same privacy router and cloud key as the
+main agent, making organisational project governance a first-class part of the
+platform rather than a bolt-on.
 
-% ─────────────────────────────────────────────────────────────────────────────
-%  4  CONCLUSION AND FUTURE PROSPECTS
-% ─────────────────────────────────────────────────────────────────────────────
-\section{Conclusion and Future Prospects}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\noindent\textbf{Summary.}
-KnowledgeMind addresses a practical gap at the intersection of personal
-information management and privacy-preserving AI.
-By combining a live personal knowledge graph, a proactive conflict-aware
-monitor, a provably private routing layer, and a multi-level ReAct agent, the
-system provides a unified organisational intelligence platform that runs
-entirely on commodity CPU hardware.
-Evaluation on the routing benchmark achieves 100\,\% adherence to the
-privacy contract; the proactive monitor correctly surfaces scheduling conflicts
-across Slack and Calendar channels in all tested scenarios.
 
-\medskip\noindent\textbf{Future Prospects.}
 
-\noindent\emph{Embedding-based entity deduplication.}
-The current name-exact matching strategy fails on aliases and nicknames.
-Replacing it with \texttt{all-MiniLM-L6-v2} embeddings will allow the KG to
-merge ``Dr.\ Sharma'' and ``Rohit Sharma'' into a single node.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\noindent\emph{Multi-modal ingestion.}
-Extending the connector layer to ingest voice meeting transcripts (via
-Whisper) and handwritten notes (via a document-understanding model) will
-close the remaining dark data channels.
+\section{Evaluation}\label{sec:eval}
 
-\noindent\emph{On-device fine-tuning.}
-LoRA fine-tuning of the commitment extractor on the user's own historical
-data—entirely local, without any cloud data egress—will improve soft
-commitment recall, particularly for domain-specific jargon.
+We evaluate two properties offline: the router's adherence to the privacy
+contract, and the end-to-end latency of the live agent. On a 30-task routing
+benchmark every personal-data step is kept \textsc{local}
+(Table~\ref{tab:results}), matching the contract of
+Section~\ref{sec:routing}. Latency is measured with the live agent (Ollama for
+local steps, Groq for cloud steps) on an Intel~i5-1235U (CPU-only) over 13 golden
+cases, all run at the default L2 level. The median latency is $11.0$\,s; the mean
+($26.5$\,s) and maximum ($155.6$\,s) are inflated by three CPU-bound
+local-inference outliers, while the cloud-routed steps are comparatively fast. A
+per-agency-level breakdown appears in Appendix~\ref{app:latency}
+(Table~\ref{tab:latency}); the L2 workflow has the lowest median because its
+planning and critique run on the fast cloud model, whereas L1 and L3 rely more on
+local CPU inference. Soft-commitment recall requires a labelled corpus and is
+deferred to the planned benchmark (Appendix~\ref{app:future}).
 
-\noindent\emph{Federated organisational KG.}
-A team-level deployment where individual local graphs selectively share
-non-private commitment edges (e.g.\ shared deadlines) could provide
-collective scheduling intelligence without centralising personal data.
+\begin{table}[h]
+\caption{Headline results. Routing from the offline benchmark ($n{=}30$);
+latency from the live eval harness ($n{=}13$, Intel~i5-1235U, Ollama${+}$Groq).}
+\centering
+\begin{tabular}{lc}
+\toprule
+Metric & Value \\
+\midrule
+Routing accuracy (personal steps stay \textsc{local}) & \textbf{100\%} (30/30) \\
+Proactive conflict detection (curated)                & all found, 0 false alerts \\
+End-to-end latency, median / mean (CPU)               & 11.0\,s / 26.5\,s \\
+Soft-commitment recall                                & $>$70\% (target, App.~\ref{app:future}) \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{table}
 
-\noindent\emph{WhatsApp and mobile.}
-Integration with the WhatsApp Business API and a React Native client would
-extend coverage to the dominant mobile communication channel.
 
-\noindent\emph{Quantitative evaluation.}
-A planned 30-task, 5-category benchmark suite will enable systematic
-measurement of soft-commitment recall ($>70\,\%$ target), conflict precision
-($>80\,\%$), and end-to-end latency ($<10$\,s on an Intel i5-1235U).
+Each agency level was run live on the same
+13-case golden set (Intel~i5-1235U, Ollama${+}$Groq). Medians are more
+representative than the means, which a few CPU-bound cases inflate.
 
-\vspace{4pt}
-KnowledgeMind demonstrates that privacy and proactive intelligence need not be
-in tension: by keeping routing decisions explicit and auditable, the system
-builds a foundation of user trust that purely cloud-based assistants cannot
-replicate.
+\begin{table}[h]
+\centering
+\caption{Live end-to-end latency by agency level ($n{=}13$ each).}
+\label{tab:latency}
+\begin{tabular}{lccc}
+\toprule
+Level & Median & Mean & Max \\
+\midrule
+L1 (augmented)  & 21.0\,s & 25.7\,s &  79.9\,s \\
+L2 (workflow)   & 11.0\,s & 26.5\,s & 155.6\,s \\
+L3 (autonomous) & 23.5\,s & 50.9\,s & 323.5\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-% ─────────────────────────────────────────────────────────────────────────────
-%  REFERENCES
-% ─────────────────────────────────────────────────────────────────────────────
-\begin{thebibliography}{9}
-\small
-\bibitem{yao2023react}
-S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, and Y.~Cao.
-\newblock {ReAct: Synergizing Reasoning and Acting in Language Models}.
-\newblock In \emph{Proc.\ ICLR}, 2023.
+The L2 workflow attains the lowest median because its planning and critique run on
+the fast cloud model while only tool dispatch is local; L1 and L3 lean more on
+local CPU inference, and L3's replanning loop returned empty answers on $3/13$
+cases, so its figures should be read with that caveat.
 
-\bibitem{pan2024kg}
-S.~Pan, L.~Luo, Y.~Wang, C.~Chen, J.~Wang, and X.~Wu.
-\newblock Unifying Large Language Models and Knowledge Graphs: A Roadmap.
-\newblock \emph{IEEE Trans.\ Knowl.\ Data Eng.}, 2024.
 
-\bibitem{qwen2024}
-Qwen Team, Alibaba Cloud.
-\newblock {Qwen2.5 Technical Report}.
-\newblock \emph{arXiv:2412.15115}, 2024.
 
-\bibitem{langgraph2024}
-LangChain Inc.
-\newblock {LangGraph: Building Stateful, Multi-Actor Applications with LLMs}.
-\newblock \url{https://langchain-ai.github.io/langgraph/}, 2024.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\bibitem{notion2024}
-Notion Labs.
-\newblock {Notion AI: Connected workspace with AI}.
-\newblock \url{https://www.notion.so/product/ai}, 2024.
+\section{Conclusion and future work}\label{sec:conclusion}
 
-\bibitem{ms2024copilot}
-Microsoft Corp.
-\newblock {Microsoft 365 Copilot}.
-\newblock \url{https://www.microsoft.com/en-us/microsoft-365/copilot}, 2024.
+\km{} shows that a useful personal agent can keep sensitive data on-device while
+still drawing on a cloud model for non-sensitive work. By combining a live
+personal knowledge graph, a proactive conflict-aware monitor, a privacy-pinned
+routing layer, and a multi-level ReAct agent, it provides a unified
+organisational-intelligence platform that runs entirely on commodity CPU
+hardware. On the routing benchmark it achieves full adherence to the privacy
+contract, and the monitor surfaces Slack-versus-calendar conflicts in every
+tested scenario (Section~\ref{sec:eval}).
 
-\bibitem{openai2024gpt4}
-OpenAI.
-\newblock {GPT-4 Technical Report}.
-\newblock \emph{arXiv:2303.08774}, 2024.
+Several directions remain open: embedding-based entity deduplication, multi-modal
+ingestion (voice and handwriting), on-device LoRA fine-tuning of the extractor, a
+federated team-level graph, WhatsApp and mobile clients, and a quantitative
+30-task benchmark. These are detailed in Appendix~\ref{app:future}.
 
-\bibitem{chroma2023}
-Chroma Core.
-\newblock {Chroma: the open-source embedding database}.
-\newblock \url{https://www.trychroma.com/}, 2023.
 
-\bibitem{spacy2020}
-M.~Honnibal, I.~Montani, S.~Van Landeghem, and A.~Boyd.
-\newblock {spaCy: Industrial-strength Natural Language Processing}.
-\newblock \url{https://spacy.io}, 2020.
-\end{thebibliography}
+
+\bibliography{mybibfile}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  APPENDIX -- supporting material (page 4 onwards), linked from the main text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage     % force the appendix to start on a fresh page (page 4)
+\appendix
+
+% Large centered "Appendix" banner; sections below still number as A, B, C
+{\par\centering\Large\bfseries Appendix\par}\medskip
+
+
+\section{Detailed market comparison}\label{app:comparison}
+
+Referenced from Section~\ref{sec:related}. Table~\ref{tab:comparison} maps the
+most prominent competing tools against the capabilities \km{} targets.
+
+\begin{table}[h]
+\centering
+\caption{Feature comparison across competing tools.}
+\label{tab:comparison}
+\renewcommand{\arraystretch}{1.15}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}l ccccc@{}}
+\toprule
+\textbf{Feature} &
+\rotatebox{65}{Notion AI} &
+\rotatebox{65}{Copilot} &
+\rotatebox{65}{ChatGPT} &
+\rotatebox{65}{Todoist} &
+\rotatebox{65}{\textbf{KM}} \\
+\midrule
+Cross-channel ingestion    & $\times$ & \checkmark & $\times$ & $\times$ & \checkmark \\
+Soft-commitment extraction & $\times$ & $\times$   & $\times$ & $\times$ & \checkmark \\
+Conflict detection         & $\times$ & partial    & $\times$ & $\times$ & \checkmark \\
+Proactive alerting         & $\times$ & $\times$   & $\times$ & $\times$ & \checkmark \\
+On-device privacy          & $\times$ & $\times$   & $\times$ & \checkmark & \checkmark \\
+Persistent KG memory       & partial  & $\times$   & plugin   & $\times$ & \checkmark \\
+Project-plan alignment     & partial  & $\times$   & $\times$ & partial  & \checkmark \\
+CPU-only / free            & $\times$ & $\times$   & $\times$ & partial  & \checkmark \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\noindent\textbf{Notion AI / Confluence} are document-centric wikis with
+AI-assisted drafting; they require manual data entry and do not ingest live
+communication channels \citep{notion2024}. \textbf{Microsoft Copilot} integrates
+deeply with Microsoft~365 and drafts email and meeting summaries, but all
+inference runs on Microsoft's cloud, no user-controlled graph is retained, and
+the service is subscription gated \citep{ms2024copilot}. \textbf{ChatGPT and
+Gemini} are powerful conversational assistants, yet by default they keep no
+persistent cross-session memory, raise no proactive alerts, and send all user
+data to external servers \citep{openai2024gpt4}. \textbf{Todoist, Linear, and
+Jira} enforce structured manual workflows and capture only what the user
+explicitly enters, with no extraction from conversational channels.
+
+\section{Per-tool privacy floors}\label{app:floors}
+
+Referenced from Section~\ref{sec:routing}. The floor $\phi(\tau)$ guarantees a
+tool touching personal data cannot be scored as public merely because the user's
+phrasing was terse.
+
+\begin{table}[h]
+\caption{Representative per-tool privacy floors $\phi(\tau)$. Tools in
+$\mathcal{L}$ are additionally pinned \textsc{local} by rule~(1).}
+\centering
+\begin{tabular}{lc@{\hspace{8mm}}lc}
+\toprule
+Tool & $\phi(\tau)$ & Tool & $\phi(\tau)$ \\
+\midrule
+\texttt{query\_kg}        & 0.95 & \texttt{apple\_health} & 0.98 \\
+\texttt{gmail}            & 0.95 & \texttt{strava}        & 0.95 \\
+\texttt{send\_message}    & 0.90 & \texttt{todoist}       & 0.90 \\
+\texttt{google\_calendar} & 0.85 & \texttt{rag\_query}    & 0.70 \\
+\texttt{code\_execution}  & 0.70 & \texttt{web\_search}   & 0.05 \\
+\bottomrule
+\end{tabular}
+\label{tab:floors}
+\end{table}
+
+\section{Extended future work}\label{app:future}
+
+Referenced from Section~\ref{sec:conclusion}.
+\begin{itemize}[noitemsep]
+  \item \emph{Embedding-based entity deduplication.} Name-exact matching fails on
+        aliases; \texttt{all-MiniLM-L6-v2} embeddings \citep{chroma2023} would let
+        the graph merge ``Dr.\ Sharma'' and ``Rohit Sharma'' into one node.
+  \item \emph{Multi-modal ingestion.} Adding voice-meeting transcripts (via
+        Whisper) and handwritten notes would close the remaining dark-data
+        channels.
+  \item \emph{On-device fine-tuning.} Local LoRA fine-tuning of the extractor on
+        the user's own history, with no cloud egress, would improve
+        soft-commitment recall on domain jargon.
+  \item \emph{Federated organisational graph.} A team deployment where local
+        graphs selectively share non-private commitment edges (such as shared
+        deadlines) could give collective scheduling intelligence without
+        centralising personal data.
+  \item \emph{WhatsApp and mobile.} A WhatsApp Business API connector and a React
+        Native client would extend coverage to the dominant mobile channel.
+  \item \emph{Quantitative evaluation.} A 30-task, five-category benchmark would
+        enable systematic measurement of soft-commitment recall ($>70\%$),
+        conflict precision ($>80\%$), and end-to-end latency ($<10$\,s on an
+        Intel i5-1235U).
+\end{itemize}
+
+\section{Per-agency-level latency}\label{app:latency}
+
+Referenced from Section~\ref{sec:eval}. Each agency level was run live on the same
+13-case golden set (Intel~i5-1235U, Ollama${+}$Groq). Medians are more
+representative than the means, which a few CPU-bound cases inflate.
+
+\begin{table}[h]
+\centering
+\caption{Live end-to-end latency by agency level ($n{=}13$ each).}
+\label{tab:latency}
+\begin{tabular}{lccc}
+\toprule
+Level & Median & Mean & Max \\
+\midrule
+L1 (augmented)  & 21.0\,s & 25.7\,s &  79.9\,s \\
+L2 (workflow)   & 11.0\,s & 26.5\,s & 155.6\,s \\
+L3 (autonomous) & 23.5\,s & 50.9\,s & 323.5\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The L2 workflow attains the lowest median because its planning and critique run on
+the fast cloud model while only tool dispatch is local; L1 and L3 lean more on
+local CPU inference, and L3's replanning loop returned empty answers on $3/13$
+cases, so its figures should be read with that caveat.
+
+
+\section{Proactive monitoring}\label{sec:proactive}
+
+% TODO: describe the LangGraph monitor FSM (poll -> extract -> update -> check
+% -> alert) and the proactive runtime (jobs/skills -> nudges + daily briefing),
+% noting that the background scheduler is off by default.
+A background monitor, implemented as a finite-state machine, polls channels and
+fires unprompted alerts on new conflicts. An optional proactive runtime composes
+on-device nudges and a daily briefing from user-defined jobs and skills.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Use this command to include your bibliography file.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Use this environment to include acknowledgements (optional).
+%%% This will be omitted in doubleblind mode.
+
+\begin{ack}
+This work was carried out as a course project for the Deep Learning course at
+the Indian Institute of Science, Bengaluru, taught by Prof.~Deepak Subramani,
+whose guidance is gratefully acknowledged.
+\end{ack}
 
 \end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
