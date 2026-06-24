@@ -494,6 +494,18 @@ def get_config_api() -> dict:
         "tavily_api_key_set": bool(cfg.tavily_api_key),
         "slack_bot_token_set": bool(cfg.slack_bot_token),
         "allow_cloud_fallback": cfg.allow_cloud_fallback,
+        # Hermes connector credential status
+        "strava_client_id_set": bool(cfg.strava_client_id),
+        "strava_client_secret_set": bool(cfg.strava_client_secret),
+        "strava_access_token_set": bool(cfg.strava_access_token),
+        "strava_refresh_token_set": bool(cfg.strava_refresh_token),
+        "todoist_api_token_set": bool(cfg.todoist_api_token),
+        "spotify_client_id_set": bool(cfg.spotify_client_id),
+        "spotify_client_secret_set": bool(cfg.spotify_client_secret),
+        "spotify_access_token_set": bool(cfg.spotify_access_token),
+        "spotify_refresh_token_set": bool(cfg.spotify_refresh_token),
+        "apple_health_export_path": cfg.apple_health_export_path,
+        "apple_health_export_path_set": bool(cfg.apple_health_export_path),
     }
 
 
@@ -505,6 +517,17 @@ class ConfigUpdate(BaseModel):
     google_credentials_path: Optional[str] = None
     complexity_threshold: Optional[float] = None
     allow_cloud_fallback: Optional[bool] = None
+    # Hermes connector credentials
+    strava_client_id: Optional[str] = None
+    strava_client_secret: Optional[str] = None
+    strava_access_token: Optional[str] = None
+    strava_refresh_token: Optional[str] = None
+    todoist_api_token: Optional[str] = None
+    spotify_client_id: Optional[str] = None
+    spotify_client_secret: Optional[str] = None
+    spotify_access_token: Optional[str] = None
+    spotify_refresh_token: Optional[str] = None
+    apple_health_export_path: Optional[str] = None
 
 
 @app.post("/api/config")

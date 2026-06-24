@@ -122,13 +122,99 @@ const CONN_META = {
 const CONN_ORDER = ["strava", "apple_health", "todoist", "spotify"];
 const CONN_HIDE = ["success", "source", "formatted", "summary", "available"];
 
+const CONN_FIELDS = {
+  strava: [
+    { key: "strava_client_id", label: "Client ID", type: "text", placeholder: "123456" },
+    { key: "strava_client_secret", label: "Client Secret", type: "password", placeholder: "abc123…" },
+    { key: "strava_access_token", label: "Access Token", type: "password", placeholder: "your access token" },
+    { key: "strava_refresh_token", label: "Refresh Token", type: "password", placeholder: "your refresh token" },
+  ],
+  apple_health: [
+    { key: "apple_health_export_path", label: "Export path", type: "text", placeholder: "~/Library/Mobile Documents/…/HealthExport" },
+  ],
+  todoist: [
+    { key: "todoist_api_token", label: "API token", type: "password", placeholder: "your Todoist API token" },
+  ],
+  spotify: [
+    { key: "spotify_client_id", label: "Client ID", type: "text", placeholder: "your Spotify client ID" },
+    { key: "spotify_client_secret", label: "Client Secret", type: "password", placeholder: "your Spotify client secret" },
+    { key: "spotify_access_token", label: "Access Token", type: "password", placeholder: "your access token" },
+    { key: "spotify_refresh_token", label: "Refresh Token", type: "password", placeholder: "your refresh token" },
+  ],
+};
+
+const CONN_HINTS = {
+  strava: "Get tokens from strava.com/settings/api. You need an API application with client ID/secret, then exchange your authorization code for access + refresh tokens.",
+  apple_health: "Drop your Apple Health export JSON from the iOS Shortcut into iCloud Drive, then enter the path to that folder here.",
+  todoist: "Find your API token in Todoist Settings → Integrations → Developer.",
+  spotify: "Create an app at developer.spotify.com. Use the client credentials flow or PKCE to obtain access + refresh tokens.",
+};
+
+function ConnectorSetupForm({ connKey, cfgStatus, onSaved }) {
+  const fields = CONN_FIELDS[connKey] || [];
+  const [form, setForm] = useState(() => Object.fromEntries(fields.map((f) => [f.key, ""])));
+  const [status, setStatus] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const upd = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  async function save(e) {
+    e.preventDefault();
+    const body = Object.fromEntries(Object.entries(form).filter(([, v]) => v.trim() !== ""));
+    if (Object.keys(body).length === 0) { setStatus("Enter at least one field."); return; }
+    setSaving(true);
+    try {
+      const r = await postJSON("/api/config", body);
+      setStatus(`Saved ${(r.saved || []).length} field(s). Reload the connector to test.`);
+      setForm(Object.fromEntries(fields.map((f) => [f.key, ""])));
+      onSaved && onSaved();
+    } catch {
+      setStatus("Save failed — check server logs.");
+    }
+    setSaving(false);
+  }
+
+  const hint = (field) => cfgStatus && cfgStatus[field.key + "_set"] ? <span className="set-hint">✓ set</span> : null;
+
+  return (
+    <form className="conn-setup-form" onSubmit={save}>
+      <div className="conn-setup-hint">{CONN_HINTS[connKey]}</div>
+      <div className="form-grid" style={{ marginTop: 10 }}>
+        {fields.map((f) => (
+          <label key={f.key}>
+            {f.label} {hint(f)}
+            <input className="input" type={f.type} value={form[f.key]} onChange={upd(f.key)} placeholder={f.placeholder} />
+          </label>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
+        <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? "Saving…" : "Save credentials"}</button>
+        <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{status}</span>
+      </div>
+    </form>
+  );
+}
+
 export function Connectors({ refresh }) {
   const [data, setData] = useState(null);
-  useEffect(() => {
-    getJSON("/api/connectors").then((d) => setData(d.connectors || {})).catch(() => setData({}));
-  }, [refresh]);
+  const [cfgStatus, setCfgStatus] = useState({});
+  const [expanded, setExpanded] = useState({});
+
+  function loadAll() {
+    Promise.all([
+      getJSON("/api/connectors"),
+      getJSON("/api/config"),
+    ]).then(([d, cfg]) => {
+      setData(d.connectors || {});
+      setCfgStatus(cfg);
+    }).catch(() => { setData({}); });
+  }
+
+  useEffect(() => { loadAll(); }, [refresh]);
 
   if (!data) return <Empty big="⏳" title="Loading connectors…" sub="" />;
+
+  function toggle(k) { setExpanded((x) => ({ ...x, [k]: !x[k] })); }
 
   return (
     <>
@@ -137,13 +223,14 @@ export function Connectors({ refresh }) {
         {CONN_ORDER.map((k) => {
           const c = data[k] || {};
           const meta = CONN_META[k];
+          const isLive = c.source === "live";
           const signals = Object.entries(c).filter(([key, v]) => !CONN_HIDE.includes(key) && typeof v !== "object");
           return (
             <div className="card conn-card" key={k}>
               <div className="conn-head">
                 <span className="conn-icon">{meta.icon}</span>
                 <div><div className="conn-title">{meta.label}</div><div className="conn-sub">{meta.sub}</div></div>
-                <span className={"chip " + (c.source === "live" ? "chip-live" : "chip-demo")} style={{ marginLeft: "auto" }}>{c.source === "live" ? "● live" : "mock"}</span>
+                <span className={"chip " + (isLive ? "chip-live" : "chip-demo")} style={{ marginLeft: "auto" }}>{isLive ? "● live" : "mock"}</span>
               </div>
               <div className="conn-summary">{c.summary || c.formatted || "(no data)"}</div>
               {signals.length > 0 && (
@@ -152,6 +239,20 @@ export function Connectors({ refresh }) {
                     <div className="conn-signal" key={key}><span className="k">{key.replace(/_/g, " ")}</span><span className="v">{String(val)}</span></div>
                   ))}
                 </div>
+              )}
+              <button
+                className={"btn conn-setup-toggle" + (expanded[k] ? " active" : "")}
+                style={{ marginTop: 10, width: "100%", fontSize: 12.5 }}
+                onClick={() => toggle(k)}
+              >
+                {expanded[k] ? "▲ Hide setup" : (isLive ? "✎ Update credentials" : "＋ Connect real data")}
+              </button>
+              {expanded[k] && (
+                <ConnectorSetupForm
+                  connKey={k}
+                  cfgStatus={cfgStatus}
+                  onSaved={() => { loadAll(); setExpanded((x) => ({ ...x, [k]: false })); }}
+                />
               )}
             </div>
           );
