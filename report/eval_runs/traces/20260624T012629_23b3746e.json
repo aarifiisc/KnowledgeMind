@@ -1,0 +1,27 @@
+{
+  "trace_id": "23b3746e-fa50-4cfc-becd-c983fd7b3334",
+  "ts": "2026-06-24T01:26:29.055832+00:00",
+  "golden_id": "G10",
+  "input": "Find a free 1-hour slot tomorrow",
+  "answer": "",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "find_free_slots",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'find_free_slots' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 4861,
+    "completion_tokens": 1107,
+    "total_tokens": 5968,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 23.52,
+  "session_id": "f6c077cf"
+}

@@ -1,0 +1,35 @@
+{
+  "trace_id": "428af3df-daa0-4be2-9ce1-8541aef56fbb",
+  "ts": "2026-06-24T01:17:14.979960+00:00",
+  "golden_id": "G1",
+  "input": "What commitments do I have this week?",
+  "answer": "This week, you have the following commitments: a team standup on June 22nd at 10:00 AM, a 1:1 with Priya on June 22nd at 4:00 PM, a Project Atlas design review on June 23rd at 2:00 PM, a dentist appointment on June 24th at 9:30 AM, and lunch with Lena on June 25th at 12:30 PM.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "query_kg",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.15,
+      "reason": "'query_kg' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 2,
+      "tool": "google_calendar",
+      "decision": "local",
+      "privacy_score": 0.85,
+      "complexity_score": 0.125,
+      "reason": "'google_calendar' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 2211,
+    "completion_tokens": 340,
+    "total_tokens": 2551,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 46.32,
+  "session_id": "41b7059f"
+}

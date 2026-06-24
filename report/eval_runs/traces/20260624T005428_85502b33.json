@@ -1,0 +1,27 @@
+{
+  "trace_id": "85502b33-132b-4b40-b3a8-2911dbcf4311",
+  "ts": "2026-06-24T00:54:28.773981+00:00",
+  "golden_id": "G4",
+  "input": "Do I have any conflicts this week?",
+  "answer": "You do not have any scheduling conflicts this week.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "conflict_edges",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.0,
+      "reason": "'conflict_edges' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1130,
+    "completion_tokens": 150,
+    "total_tokens": 1280,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 11.2,
+  "session_id": "b65f8d3f"
+}

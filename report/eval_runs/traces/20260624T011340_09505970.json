@@ -1,0 +1,27 @@
+{
+  "trace_id": "09505970-384b-469b-9684-cd9397b7d733",
+  "ts": "2026-06-24T01:13:40.691142+00:00",
+  "golden_id": "G5",
+  "input": "What did Priya say about the deadline?",
+  "answer": "Based on the information provided in the documents, Priya said about the deadline that she would send something by end of day (EOD). However, there are no hard commitments recorded, so it's considered a tentative or soft commitment.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "rag_query",
+      "decision": "local",
+      "privacy_score": 0.7,
+      "complexity_score": 0.15,
+      "reason": "Privacy score 0.70 >= 0.65 -> LOCAL."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 845,
+    "completion_tokens": 68,
+    "total_tokens": 913,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 79.93,
+  "session_id": "5dc8c9d1"
+}

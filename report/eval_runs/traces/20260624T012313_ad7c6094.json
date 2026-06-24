@@ -1,0 +1,27 @@
+{
+  "trace_id": "ad7c6094-370a-43bb-92ba-bba4dfc6b5fe",
+  "ts": "2026-06-24T01:23:13.572783+00:00",
+  "golden_id": "G4",
+  "input": "Do I have any conflicts this week?",
+  "answer": "You do not have any conflicts this week, as no matching commitments were found.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "query_kg",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.15,
+      "reason": "'query_kg' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1248,
+    "completion_tokens": 161,
+    "total_tokens": 1409,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 11.87,
+  "session_id": "50a6b4a7"
+}

@@ -1,0 +1,27 @@
+{
+  "trace_id": "fa24c705-97a9-4409-96ad-05dd5c1e2c96",
+  "ts": "2026-06-24T00:57:51.673597+00:00",
+  "golden_id": "G7",
+  "input": "Find the attention mechanism paper I saved",
+  "answer": "The query results show multiple references to the paper 'CONECCT26_1883 (1).pdf' with various similarity scores, indicating that this paper may be the one you saved. The paper appears to discuss topics such as adaptive temporal windows, multi-person stabilization, and continual on-device learning. Additionally, there are references to equations and formulations related to attention mechanisms, such as Q = ZcatWQ, K = ZcatWK, and V = ZcatWV. However, without more context or information about the paper you saved, it is difficult to confirm whether this is the exact paper you are looking for.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "rag_query",
+      "decision": "local",
+      "privacy_score": 0.7,
+      "complexity_score": 0.075,
+      "reason": "Privacy score 0.70 >= 0.65 -> LOCAL."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1479,
+    "completion_tokens": 266,
+    "total_tokens": 1745,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 12.82,
+  "session_id": "c870b38f"
+}

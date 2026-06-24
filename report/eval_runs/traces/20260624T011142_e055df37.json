@@ -1,0 +1,27 @@
+{
+  "trace_id": "e055df37-aea8-4bc1-ac1c-e82512e0061c",
+  "ts": "2026-06-24T01:11:42.489135+00:00",
+  "golden_id": "G1",
+  "input": "What commitments do I have this week?",
+  "answer": "I'm sorry, but there are no commitments found for this week based on the data available to me. Please check again later or add your commitments if you haven't already.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "query_kg",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'query_kg' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 476,
+    "completion_tokens": 53,
+    "total_tokens": 529,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 53.95,
+  "session_id": "b15781ed"
+}

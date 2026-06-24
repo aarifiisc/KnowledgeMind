@@ -1,0 +1,27 @@
+{
+  "trace_id": "79f9d9a5-5464-400f-ae52-5ac002f4d0ae",
+  "ts": "2026-06-24T01:14:17.317280+00:00",
+  "golden_id": "G6",
+  "input": "Book me a doctor at 4 PM today",
+  "answer": "I don't have any available time slots for a doctor's appointment at 4 PM today based on my calendar events. Your options are:\n- Team standup at 10 AM\n- 1:1 with Priya at 4 PM (which is in the past)\n- Project Atlas design review at 2 PM\n- Dentist appointment at 9:30 AM\n- Lunch with Lena at 12:30 PM\n\nPlease check back later or try another time.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "google_calendar",
+      "decision": "local",
+      "privacy_score": 0.85,
+      "complexity_score": 0.075,
+      "reason": "'google_calendar' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 613,
+    "completion_tokens": 118,
+    "total_tokens": 731,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 36.61,
+  "session_id": "3dc27fe9"
+}

@@ -1,0 +1,51 @@
+{
+  "trace_id": "3c87d7a7-db4d-4a01-a223-06c2287480c8",
+  "ts": "2026-06-24T01:24:04.770614+00:00",
+  "golden_id": "G5",
+  "input": "What did Priya say about the deadline?",
+  "answer": "",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "query_kg",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.05,
+      "reason": "'query_kg' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 2,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.175,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 3,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.325,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 4,
+      "tool": "send_message",
+      "decision": "local",
+      "privacy_score": 0.9,
+      "complexity_score": 0.275,
+      "reason": "'send_message' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 8359,
+    "completion_tokens": 1321,
+    "total_tokens": 9680,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 51.18,
+  "session_id": "ffd0cd10"
+}

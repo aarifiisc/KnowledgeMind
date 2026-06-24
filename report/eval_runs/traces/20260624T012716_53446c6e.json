@@ -1,0 +1,43 @@
+{
+  "trace_id": "53446c6e-dd5e-4fd0-9184-a9a93ce6ef86",
+  "ts": "2026-06-24T01:27:16.871813+00:00",
+  "golden_id": "F2",
+  "input": "Summarise my unread emails",
+  "answer": "You have 4 unread emails in your inbox. The emails are from Priya regarding Project Atlas review prep, Arjun about a design review agenda, a reminder from City Dental, and an invitation from Lena for lunch on Thursday.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 2,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.425,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 3,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.425,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 3257,
+    "completion_tokens": 386,
+    "total_tokens": 3643,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 33.18,
+  "session_id": "99c23f10"
+}

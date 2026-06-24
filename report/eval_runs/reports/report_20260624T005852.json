@@ -1,0 +1,151 @@
+{
+  "generated_at": "2026-06-24T00:58:52.957021+00:00",
+  "mode": "live",
+  "judge_backend": "stub",
+  "agency_level": "L2",
+  "n_cases": 13,
+  "metrics": {
+    "routing_accuracy": {
+      "name": "routing_accuracy",
+      "value": 1.0,
+      "ci_low": 0.7225,
+      "ci_high": 1.0,
+      "n": 10,
+      "label": "PASS"
+    },
+    "latency": {
+      "mean_s": 26.469,
+      "p95_s": 155.58,
+      "n": 13
+    },
+    "tokens": {
+      "total": 20049,
+      "mean": 1542.2,
+      "n": 13
+    },
+    "judge": {
+      "tpr": 1.0,
+      "tnr": 0.0,
+      "tpr_ci": [
+        0.7225,
+        1.0
+      ],
+      "tnr_ci": [
+        0.0,
+        0.5615
+      ],
+      "tp": 10,
+      "tn": 0,
+      "fp": 3,
+      "fn": 0,
+      "n": 13
+    }
+  },
+  "silent_failures": [],
+  "judge_verdicts": [
+    {
+      "case_id": "G1",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G2",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G3",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G4",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G5",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G6",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G7",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G8",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G9",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "G10",
+      "judge_correct": true,
+      "human_label": true,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "F1",
+      "judge_correct": true,
+      "human_label": false,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "F2",
+      "judge_correct": true,
+      "human_label": false,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    },
+    {
+      "case_id": "F3",
+      "judge_correct": true,
+      "human_label": false,
+      "reason": "Answer is non-empty, no error prefix, plausible length.",
+      "confidence": 0.7,
+      "backend": "stub"
+    }
+  ]
+}

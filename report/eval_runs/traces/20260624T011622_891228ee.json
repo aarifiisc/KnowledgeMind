@@ -1,0 +1,27 @@
+{
+  "trace_id": "891228ee-1ce3-4b6b-a1c0-f064f6908b2c",
+  "ts": "2026-06-24T01:16:22.700692+00:00",
+  "golden_id": "F3",
+  "input": "List my hard commitments for today",
+  "answer": "I'm sorry, but there are no hard commitments found for today in your records. Please check if you have any and try again.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "query_kg",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'query_kg' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 473,
+    "completion_tokens": 45,
+    "total_tokens": 518,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 15.93,
+  "session_id": "6539a182"
+}

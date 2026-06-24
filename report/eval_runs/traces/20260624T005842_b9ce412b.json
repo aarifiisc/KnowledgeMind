@@ -1,0 +1,27 @@
+{
+  "trace_id": "b9ce412b-61f6-4712-8b38-4861ae81723a",
+  "ts": "2026-06-24T00:58:42.209954+00:00",
+  "golden_id": "F2",
+  "input": "Summarise my unread emails",
+  "answer": "You have 4 unread emails. The subjects include a project review preparation from Priya, a design review agenda from Arjun, an appointment reminder from City Dental, and a lunch invitation from Lena on Thursday.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.025,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1174,
+    "completion_tokens": 184,
+    "total_tokens": 1358,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 10.96,
+  "session_id": "178c93e2"
+}

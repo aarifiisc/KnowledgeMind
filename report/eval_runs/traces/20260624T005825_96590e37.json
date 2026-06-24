@@ -1,0 +1,27 @@
+{
+  "trace_id": "96590e37-ad20-47df-905e-deb2f280effe",
+  "ts": "2026-06-24T00:58:25.714460+00:00",
+  "golden_id": "G10",
+  "input": "Find a free 1-hour slot tomorrow",
+  "answer": "There is a 12-hour free slot tomorrow from 08:00 to 20:00, which includes multiple 1-hour slots. You can choose any 1-hour slot within this time frame, such as 08:00-09:00, 09:00-10:00, and so on.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "find_free_slots",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'find_free_slots' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1320,
+    "completion_tokens": 242,
+    "total_tokens": 1562,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 12.89,
+  "session_id": "de3cd2cc"
+}

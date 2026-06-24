@@ -1,0 +1,27 @@
+{
+  "trace_id": "5d96fb91-46a6-481b-94b0-a76e355f3ffc",
+  "ts": "2026-06-24T01:15:45.171012+00:00",
+  "golden_id": "F1",
+  "input": "What is the capital of France?",
+  "answer": "The capital of France is Paris.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "web_search",
+      "decision": "cloud",
+      "privacy_score": 0.1,
+      "complexity_score": 0.075,
+      "reason": "'web_search' prefers CLOUD and privacy score 0.10 < 0.65 -> CLOUD."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 860,
+    "completion_tokens": 24,
+    "total_tokens": 884,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 10.6,
+  "session_id": "06758ec7"
+}

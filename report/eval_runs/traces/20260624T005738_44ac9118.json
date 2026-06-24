@@ -1,0 +1,27 @@
+{
+  "trace_id": "44ac9118-f59e-49ac-9f4b-6201b0c6eee3",
+  "ts": "2026-06-24T00:57:38.845780+00:00",
+  "golden_id": "G6",
+  "input": "Book me a doctor at 4 PM today",
+  "answer": "I'm not able to book a doctor's appointment for you as I don't have access to your calendar or any external systems. Additionally, I don't have the ability to connect to Google or other services. If you'd like to book a doctor's appointment, you may need to contact the doctor's office directly or use a separate booking system.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "google_calendar",
+      "decision": "local",
+      "privacy_score": 0.85,
+      "complexity_score": 0.25,
+      "reason": "'google_calendar' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1306,
+    "completion_tokens": 332,
+    "total_tokens": 1638,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 34.46,
+  "session_id": "4cb1a842"
+}

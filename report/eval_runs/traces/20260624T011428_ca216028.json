@@ -1,0 +1,27 @@
+{
+  "trace_id": "ca216028-fc74-4165-8cce-35647d144db4",
+  "ts": "2026-06-24T01:14:28.367412+00:00",
+  "golden_id": "G7",
+  "input": "Find the attention mechanism paper I saved",
+  "answer": "I couldn't find the specific attention mechanism paper you saved. The search results provide information on the attention mechanism in general, including a review paper, an explanation from IBM, and a list of relevant papers on GitHub. If you can provide more details or context about the paper you're looking for, I may be able to help you better.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "web_search",
+      "decision": "cloud",
+      "privacy_score": 0.1,
+      "complexity_score": 0.075,
+      "reason": "'web_search' prefers CLOUD and privacy score 0.10 < 0.65 -> CLOUD."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 878,
+    "completion_tokens": 85,
+    "total_tokens": 963,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 11.04,
+  "session_id": "988123f3"
+}

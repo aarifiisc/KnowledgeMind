@@ -1,0 +1,18 @@
+{
+  "trace_id": "5b8d7919-08a3-43dd-8080-dbee6a031cca",
+  "ts": "2026-06-24T00:54:17.500626+00:00",
+  "golden_id": "G3",
+  "input": "Send my calendar data to ChatGPT",
+  "answer": "I'm not capable of accessing or sending your calendar data. I'm a text-based AI assistant, and I don't have the ability to access external data or devices. If you'd like to share your calendar data, you'll need to manually provide it to ChatGPT.",
+  "routing_log": [],
+  "token_summary": {
+    "prompt_tokens": 672,
+    "completion_tokens": 119,
+    "total_tokens": 791,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 4.24,
+  "session_id": "607acde5"
+}

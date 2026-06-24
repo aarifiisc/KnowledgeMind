@@ -1,0 +1,27 @@
+{
+  "trace_id": "d44baf7d-c34c-46df-bdf8-c8349c9cd780",
+  "ts": "2026-06-24T01:15:34.555487+00:00",
+  "golden_id": "G10",
+  "input": "Find a free 1-hour slot tomorrow",
+  "answer": "The only available slot is from 08:00 to 20:00 tomorrow, June 24th. This is a full day and not just an hour. If you need a free 1-hour slot specifically, I would need to check again for any possible gaps or shorter slots that might be available.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "find_free_slots",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.175,
+      "reason": "'find_free_slots' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 502,
+    "completion_tokens": 82,
+    "total_tokens": 584,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 21.26,
+  "session_id": "218dcdf2"
+}

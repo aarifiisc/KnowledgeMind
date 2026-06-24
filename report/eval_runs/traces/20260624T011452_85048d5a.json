@@ -1,0 +1,27 @@
+{
+  "trace_id": "85048d5a-7524-4d3f-88af-8d580507bedc",
+  "ts": "2026-06-24T01:14:52.271409+00:00",
+  "golden_id": "G8",
+  "input": "What's on my calendar today?",
+  "answer": "Today, there are no free slots available according to your calendar as per the provided information. The find_free_slots tool showed a slot from 08:00 to 20:00 on 2026-06-24, but it does not provide today's schedule.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "find_free_slots",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.15,
+      "reason": "'find_free_slots' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 499,
+    "completion_tokens": 77,
+    "total_tokens": 576,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 23.89,
+  "session_id": "2343faf3"
+}

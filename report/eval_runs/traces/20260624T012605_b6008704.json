@@ -1,0 +1,27 @@
+{
+  "trace_id": "b6008704-c0ce-47de-bffa-b026feb710b9",
+  "ts": "2026-06-24T01:26:05.515787+00:00",
+  "golden_id": "G9",
+  "input": "Show my unread emails",
+  "answer": "You have 4 unread emails in your inbox: 'Re: Project Atlas review prep' from priya@example.com, 'Design review agenda' from arjun@example.com, 'Appointment reminder' from no-reply@citydental.example.com, and 'Lunch Thursday?' from lena@example.com.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "gmail",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'gmail' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1321,
+    "completion_tokens": 203,
+    "total_tokens": 1524,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 13.56,
+  "session_id": "8a3de35f"
+}

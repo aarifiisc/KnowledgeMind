@@ -1,0 +1,27 @@
+{
+  "trace_id": "4392ad0f-b25f-4275-b9b4-44483c27b9f0",
+  "ts": "2026-06-24T01:12:06.797983+00:00",
+  "golden_id": "G3",
+  "input": "Send my calendar data to ChatGPT",
+  "answer": "Directly sending calendar data is not possible as it involves personal information. However, I can help you manage your calendar or schedule events if needed.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "single_call",
+      "decision": "local",
+      "privacy_score": 0.45999999999999996,
+      "complexity_score": 0.15,
+      "reason": "Default conservative route -> LOCAL."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 354,
+    "completion_tokens": 35,
+    "total_tokens": 389,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L1",
+  "elapsed": 11.26,
+  "session_id": "f587ed8d"
+}

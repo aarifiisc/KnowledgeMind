@@ -1,0 +1,35 @@
+{
+  "trace_id": "e34585e2-ee81-4c86-a05f-df3c23789099",
+  "ts": "2026-06-24T01:25:33.556184+00:00",
+  "golden_id": "G7",
+  "input": "Find the attention mechanism paper I saved",
+  "answer": "The attention mechanism paper you are looking for could not be found with the available information. To locate it, more specific details about the paper are needed.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "query_kg",
+      "decision": "local",
+      "privacy_score": 0.95,
+      "complexity_score": 0.075,
+      "reason": "'query_kg' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    },
+    {
+      "step_id": 2,
+      "tool": "web_search",
+      "decision": "cloud",
+      "privacy_score": 0.1,
+      "complexity_score": 0.075,
+      "reason": "'web_search' prefers CLOUD and privacy score 0.10 < 0.65 -> CLOUD."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 6100,
+    "completion_tokens": 1118,
+    "total_tokens": 7218,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L3",
+  "elapsed": 30.09,
+  "session_id": "4a38f512"
+}

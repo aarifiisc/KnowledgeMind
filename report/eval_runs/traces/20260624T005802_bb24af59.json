@@ -1,0 +1,27 @@
+{
+  "trace_id": "bb24af59-38c6-4ea0-acd4-917be784a05f",
+  "ts": "2026-06-24T00:58:02.565567+00:00",
+  "golden_id": "G8",
+  "input": "What's on my calendar today?",
+  "answer": "You have the following events on your calendar today: Team standup at 10:00 AM and 1:1 with Priya at 4:00 PM.",
+  "routing_log": [
+    {
+      "step_id": 1,
+      "tool": "google_calendar",
+      "decision": "local",
+      "privacy_score": 0.85,
+      "complexity_score": 0.1,
+      "reason": "'google_calendar' is in ALWAYS_LOCAL_TOOLS (privacy-pinned)."
+    }
+  ],
+  "token_summary": {
+    "prompt_tokens": 1229,
+    "completion_tokens": 179,
+    "total_tokens": 1408,
+    "local_tokens": 0,
+    "cloud_tokens": 0
+  },
+  "agency_level": "L2",
+  "elapsed": 10.88,
+  "session_id": "35dd6320"
+}
